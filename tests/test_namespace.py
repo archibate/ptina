@@ -2,7 +2,7 @@ from common import *
 
 
 @ti.test(ti.cpu)
-def test_assign():
+def test_copy():
     ret = ti.Vector.field(3, int, [])
 
     @ti.kernel
@@ -68,3 +68,19 @@ def test_class():
 
     main()
     assert np.all(ret.to_numpy() == [1, 2, 3, 6])
+
+
+@ti.test(ti.cpu)
+def test_assign():
+    r = ti.field(int, [])
+    s = ti.field(float, [])
+
+    @ti.kernel
+    def main():
+        x = namespace(a=1, b=3.1)
+        x = namespace(a=3, b=4)
+        r[None], s[None] = x.a, x.b
+
+    main()
+    assert r[None] == 3
+    assert s[None] == 4.0

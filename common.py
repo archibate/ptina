@@ -20,6 +20,52 @@ hasattr(ti, '_tinahacked') or setattr(ti, '_tinahacked', 1) or setattr(ti,
 
 @eval('lambda x: x()')
 def _():
+    if hasattr(ti, 'smart'):
+        return
+
+    ti.smart = lambda x: x
+
+    import copy, ast
+    from taichi.lang.transformer import ASTTransformerBase, ASTTransformerPreprocess
+
+    old_get_decorator = ASTTransformerBase.get_decorator
+
+    @staticmethod
+    def get_decorator(node):
+        if not (isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute) and isinstance(
+                    node.func.value, ast.Name) and node.func.value.id == 'ti'
+                and node.func.attr in ['smart']):
+            return old_get_decorator(node)
+        return node.func.attr
+
+    ASTTransformerBase.get_decorator = get_decorator
+
+    old_visit_struct_for = ASTTransformerPreprocess.visit_struct_for
+
+    def visit_struct_for(self, node, is_grouped):
+        if not is_grouped:
+            decorator = self.get_decorator(node.iter)
+            if decorator == 'smart':  # so smart!
+                self.current_control_scope().append('smart')
+                self.generic_visit(node, ['body'])
+                t = self.parse_stmt('if 1: pass; del a')
+                t.body[0] = node
+                target = copy.deepcopy(node.target)
+                target.ctx = ast.Del()
+                if isinstance(target, ast.Tuple):
+                    for tar in target.elts:
+                        tar.ctx = ast.Del()
+                t.body[-1].targets = [target]
+                return t
+
+        return old_visit_struct_for(self, node, is_grouped)
+
+    ASTTransformerPreprocess.visit_struct_for = visit_struct_for
+
+
+@eval('lambda x: x()')
+def _():
     class GUI(ti.GUI):
         def __init__(self, name='Tina', res=512, **kwargs):
             if isinstance(res, ti.Matrix):
@@ -316,6 +362,14 @@ def ranprint(*args, rate=1e-3):
 
 
 class namespace(dict):
+    is_taichi_class = True
+
+    def __init__(self, **kwargs):
+        res = dict()
+        for k, v in kwargs.items():
+            res[k] = ti.expr_init(v)
+        super().__init__(res)
+
     class FakeAssign:
         is_taichi_class = True
 
@@ -326,6 +380,12 @@ class namespace(dict):
         def assign(self, value):
             self.parent[self.name] = ti.expr_init(value)
 
+        def __call__(self, *args, **kwargs):
+            raise AttributeError(self.name) from None
+
+        def __getattr__(self, name):
+            raise AttributeError(self.name + '.' + name) from None
+
     def __getattr__(self, name):
         try:
             return self[name]
@@ -334,8 +394,47 @@ class namespace(dict):
                 raise AttributeError(name) from None
             return self.FakeAssign(self, name)
 
-    def copy(self):
-        res = namespace()
-        for k in self.keys():
-            res[k] = ti.expr_init(self[k])
-        return res
+    def assign(self, other):
+        assert list(self.keys()) == list(other.keys())
+        for k, v in other.items():
+            ti.assign(getattr(self, k), v)
+
+    def variable(self):
+        return namespace(**self)
+
+
+class listspace(list):
+    is_taichi_class = True
+
+    def __init__(self, *args):
+        super().__init__(map(ti.expr_init, args))
+
+    def assign(self, other):
+        assert len(self) == len(other)
+        for x, y in zip(self, other):
+            ti.assign(x, y)
+
+    def variable(self):
+        return listspace(**self)
+
+
+def multireturn(foo):
+    import functools
+
+    @functools.wraps(foo)
+    def wrapped(*args):
+        it = iter(foo(*args))
+
+        @ti.func
+        def template():
+            ret = next(it)
+            while True:
+                for x in ti.smart(it):
+                    ret = x
+                    break
+                break
+            return ret
+
+        return template()
+
+    return wrapped
