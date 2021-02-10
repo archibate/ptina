@@ -1,7 +1,11 @@
 from image import *
 from model import *
+from engine import *
 
 init_session()
 
-x = Model.load('assets/monkey.obj')
-print(x.to_numpy())
+film = Image(512, 512)
+engine = PathEngine(film)
+
+engine.render()
+ti.imshow(film.to_numpy_normalized())

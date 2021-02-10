@@ -22,12 +22,29 @@ class Image:
     @ti.kernel
     def _to_numpy(self, arr: ti.ext_arr()):
         for x, y in ti.ndrange(self.nx, self.ny):
+            val = self[x, y]
             for k in ti.static(range(4)):
-                arr[x, y, k] = self[x, y][k]
+                arr[x, y, k] = val[k]
+
+    @ti.kernel
+    def _to_numpy_normalized(self, arr: ti.ext_arr()):
+        for x, y in ti.ndrange(self.nx, self.ny):
+            val = self[x, y]
+            if val.w != 0:
+                val.xyz /= val.w
+            else:
+                val.xyz = V(0.9, 0.4, 0.9)
+            for k in ti.static(range(3)):
+                arr[x, y, k] = val[k]
 
     def to_numpy(self):
         arr = np.empty((self.nx, self.ny, 4), dtype=np.float32)
         self._to_numpy(arr)
+        return arr
+
+    def to_numpy_normalized(self):
+        arr = np.empty((self.nx, self.ny, 3), dtype=np.float32)
+        self._to_numpy_normalized(arr)
         return arr
 
     @ti.kernel
