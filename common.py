@@ -96,9 +96,6 @@ def _():
     ti.GUI = GUI
 
 
-MAX = 2**20
-
-
 def V(*xs):
     return ti.Vector(xs)
 
@@ -436,5 +433,15 @@ def multireturn(foo):
             return ret
 
         return template()
+
+    return wrapped
+
+
+def subscripter(foo):
+    import functools
+
+    @functools.wraps(foo)
+    def wrapped(self, *indices):
+        foo(self, indices)
 
     return wrapped
