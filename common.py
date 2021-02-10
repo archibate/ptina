@@ -306,18 +306,36 @@ def isnan(x):
     return not (x >= 0 or x <= 0)
 
 
-def ranprint(*args, **kwargs):
+def ranprint(*args, rate=1e-3):
     @ti.func
-    def func(r):
-        if ti.random() < r:
+    def func(rate):
+        if ti.random() < rate:
             print(*args)
 
-    func(kwargs.get('r', 1e-3))
+    func(rate)
 
 
 class namespace(dict):
+    class FakeAssign:
+        is_taichi_class = True
+
+        def __init__(self, parent, name):
+            self.parent = parent
+            self.name = name
+
+        def assign(self, value):
+            self.parent[self.name] = ti.expr_init(value)
+
     def __getattr__(self, name):
         try:
             return self[name]
         except KeyError as e:
-            raise AttributeError(name) from None
+            if not ti.inside_kernel():
+                raise AttributeError(name) from None
+            return self.FakeAssign(self, name)
+
+    def copy(self):
+        res = namespace()
+        for k in self.keys():
+            res[k] = ti.expr_init(self[k])
+        return res
