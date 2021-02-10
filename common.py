@@ -96,6 +96,10 @@ def _():
     ti.GUI = GUI
 
 
+eps = 1e-6
+inf = 1e6
+
+
 def V(*xs):
     return ti.Vector(xs)
 
@@ -170,6 +174,7 @@ def U2(i):
 
 
 ti.Matrix.xy = property(lambda v: V(v.x, v.y))
+ti.Matrix.xz = property(lambda v: V(v.x, v.z))
 ti.Matrix.Yx = property(lambda v: V(-v.y, v.x))
 ti.Matrix.xZy = property(lambda v: V(v.x, -v.z, v.y))
 ti.Matrix.xyz = property(lambda v: V(v.x, v.y, v.z))
@@ -279,6 +284,24 @@ def spherical(h, p):
 def unspherical(dir):
     p = ti.atan2(dir.y, dir.x) / ti.tau
     return dir.z, p % 1
+
+
+@ti.func
+def dir2tex(dir):
+    dir = dir.normalized()
+    s = ti.atan2(dir.z, dir.x) / ti.pi * 0.5 + 0.5
+    t = ti.atan2(dir.y, dir.xz.norm()) / ti.pi + 0.5
+    return V(s, t)
+
+
+@ti.pyfunc
+def gammize(x):
+    return x**(1/2.2)
+
+
+@ti.pyfunc
+def ungammize(x):
+    return x**2.2
 
 
 @ti.func
