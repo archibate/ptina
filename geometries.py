@@ -92,9 +92,9 @@ class Face(namespace):
         return Box(lo, hi)
 
     @ti.func
-    def intersect(self, r):
+    def intersect(self, ray):
         v0, v1, v2 = self.v0, self.v1, self.v2
-        ro, rd = r.o, r.d
+        ro, rd = ray.o, ray.d
         u = v1 - v0
         v = v2 - v0
         norm = u.cross(v)

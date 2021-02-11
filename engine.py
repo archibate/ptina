@@ -9,9 +9,16 @@ class PathEngine:
         self.geom = geom
         self.film = film
 
+    @multireturn
     @ti.func
     def trace(self, r):
-        return gammize(self.bgm(*dir2tex(r.d)))
+        yield V3(0.0)
+
+        hit = self.tree.intersect(r)
+        if hit.hit == 0:
+            yield gammize(self.bgm(*dir2tex(r.d)).xyz)
+
+        yield V3(1.0)
 
     @ti.kernel
     def render(self):

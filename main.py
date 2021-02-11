@@ -5,7 +5,7 @@ from engine import *
 init_session()
 
 film = Image(512, 512)
-geom = Model.load('assets/cube.obj')
+geom = Model.load('assets/sphere.obj')
 engine = PathEngine(film, geom)
 
 engine.render()
