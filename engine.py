@@ -29,8 +29,8 @@ class PathEngine(metaclass=Singleton):
         throughput = V3(1.0)
         last_brdf_pdf = 0.0
 
-        material = Phong()
-        #material = Disney()
+        #material = Phong()
+        material = Disney()
 
         while depth < 4 and Vany(throughput > eps) and importance > eps:
             depth += 1
@@ -47,16 +47,13 @@ class PathEngine(metaclass=Singleton):
             '''
 
             if hit.hit == 0:
-                result += throughput * gammize(self.bgm(*dir2tex(r.d)).xyz)
+                result += throughput * self.bgm(*dir2tex(r.d)).xyz
                 break
 
             avoid = hit.index
             face = ModelPool().get_face(hit.index)
             normal = face.normal(hit)
             hitpos = r.o + hit.depth * r.d
-
-            if r.d.dot(normal) > 0:
-                normal = -normal
 
             '''
             li = LightPool().sample(hitpos, random3())
@@ -111,6 +108,6 @@ LightPool().count[None] = 1
 ModelPool().load('assets/sphere.obj')
 BVHTree().build()
 
-for i in range(4):
+for i in range(12):
     PathEngine().render()
-ti.imshow(PathEngine().film.to_numpy_normalized())
+ti.imshow(gammize(PathEngine().film.to_numpy_normalized()))

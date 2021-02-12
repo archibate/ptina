@@ -6,10 +6,10 @@ from .microfacet import *
 class Disney(namespace):
     @ti.func
     def __init__(self,
-            basecolor=V3(1.0),
-            metallic=1.0,
+            basecolor=V3(0.01),
+            metallic=0.0,
             subsurface=0.0,
-            roughness=0.8,
+            roughness=0.4,
             specular=0.5,
             specularTint=0.4,
             sheen=0.0,
@@ -32,8 +32,10 @@ class Disney(namespace):
         self.transmission = transmission
         self.ior = ior
 
+        self.tintcolor = V3(1.0)
         luminance = self.basecolor.dot(V(0.3, 0.6, 0.1))
-        self.tintcolor = self.basecolor / luminance if luminance > 0 else V3(1.0)
+        if luminance > eps:
+            self.tintcolor = self.basecolor / luminance
         self.speccolor = lerp(self.metallic, self.specular * 0.08 * lerp(
             self.specularTint, V3(1.0), self.tintcolor), self.basecolor)
         self.sheencolor = lerp(self.sheenTint, V3(1.0), self.tintcolor)
@@ -151,25 +153,26 @@ class Disney(namespace):
             if cosoh > 0 and coso > 0:
                 Ds = GTR2(cosh, alpha)
 
-                if choice(self.transmission):
-                    fdf = dielectricFresnel(etao, etai, cosoh)
-                    reflrate = lerp(fdf, 0.2, 1.0)
+                if self.transmission != 0:
+                    if choice(self.transmission):
+                        fdf = dielectricFresnel(etao, etai, cosoh)
+                        reflrate = lerp(fdf, 0.2, 1.0)
 
-                    if ti.random() < reflrate:
-                        result.outdir = outdir
-                        result.pdf = Ds * fdf
-                        result.color = self.basecolor * \
-                                fdf * self.transmission / reflrate / choice.pdf
-                        result.impo = 1
-
-                    else:
-                        has_r, outdir = refract(-indir, halfdir, eta)
-                        if has_r:
+                        if choice(reflrate):
                             result.outdir = outdir
-                            result.pdf = Ds * (1 - fdf)
-                            result.color = self.basecolor * (1 - fdf) \
-                                    * self.transmission / reflrate / choice.pdf
+                            result.pdf = Ds * fdf
+                            result.color = self.basecolor * \
+                                    fdf * self.transmission / choice.pdf
                             result.impo = 1
+
+                        else:
+                            has_r, outdir = refract(-indir, halfdir, eta)
+                            if has_r:
+                                result.outdir = outdir
+                                result.pdf = Ds * (1 - fdf)
+                                result.color = self.basecolor * (1 - fdf) \
+                                        * self.transmission / choice.pdf
+                                result.impo = 1
 
                 else:
                     Foh = schlickFresnel(cosoh)

@@ -342,15 +342,13 @@ def reflect(I, N):
 
 
 @ti.pyfunc
-def refract(I, N, ior):
-    has_r, T = 0, I
+def refract(I, N, eta):
+    has_r, T = 0, I * 0
     NoI = N.dot(I)
-    discr = 1 - ior**2 * (1 - NoI**2)
+    discr = 1 - eta**2 * (1 - NoI**2)
     if discr > 0:
         has_r = 1
-        T = (ior * I - N * (ior * NoI + ti.sqrt(discr))).normalized()
-    else:
-        T *= 0
+        T = (eta * I - N * (eta * NoI + ti.sqrt(discr))).normalized()
     return has_r, T
 
 
