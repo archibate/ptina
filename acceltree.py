@@ -1,5 +1,6 @@
 from model import *
 from geometries import *
+from stack import *
 
 
 @ti.data_oriented
@@ -71,8 +72,12 @@ class _BVHTree:
         self._build(data, rmin, rmax, rind, curr * 2 + 1)
 
     @ti.func
+    def element_intersect(self, index, ray):
+        return ModelPool().get_face(index).intersect(ray)
+
+    @ti.func
     def intersect(self, ray):
-        stack = GlobalStack()
+        stack = Stack().get()
         ntimes = 0
         stack.clear()
         stack.push(1)
@@ -85,7 +90,7 @@ class _BVHTree:
 
             if self.dir[curr] == 0:
                 index = self.ind[curr]
-                hit = self.geom[index].intersect(ray)
+                hit = self.element_intersect(index, ray)
                 if hit.hit != 0 and hit.depth < ret.depth:
                     ret.depth = hit.depth
                     ret.index = index

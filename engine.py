@@ -2,6 +2,7 @@ from image import *
 from camera import *
 from model import *
 from acceltree import *
+from stack import *
 
 
 @ti.data_oriented
@@ -17,14 +18,16 @@ class PathEngine(metaclass=Singleton):
 
         hit = BVHTree().intersect(r)
         if hit.hit != 0:
-            yield V3(1.0)
+            yield V23(hit.uv, 1 - hit.uv.x - hit.uv.y)
 
         yield gammize(self.bgm(*dir2tex(r.d)).xyz)
 
     @ti.kernel
     def render(self):
-        camera = Camera()
+        camera = Camera(V(0.0, 0.0, 4.0))
         for i, j in ti.ndrange(self.film.nx, self.film.ny):
+            Stack().set(i * self.film.nx + j)
+
             dx, dy = 0.5, 0.5
             x = (i + dx) / self.film.nx * 2 - 1
             y = (j + dy) / self.film.ny * 2 - 1
@@ -32,14 +35,18 @@ class PathEngine(metaclass=Singleton):
             clr = self.trace(ray)
             self.film[i, j] += V34(clr, 1.0)
 
+            Stack().unset()
 
 
+
+ti.init(ti.opengl)
+Stack()
 BVHTree()
 ImagePool()
 ModelPool()
 PathEngine()
 
-ModelPool().load('assets/cube.obj')
+ModelPool().load('assets/monkey.obj')
 BVHTree().build()
 
 PathEngine().render()

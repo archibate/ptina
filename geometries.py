@@ -23,9 +23,7 @@ class Box(namespace):
         hit = 1
 
         for i in ti.static(range(3)):
-            if hit:
-                pass
-            elif abs(r.d[i]) < eps:
+            if abs(r.d[i]) < eps:
                 if r.o[i] < self.lo[i] or r.o[i] > self.hi[i]:
                     hit = 0
             else:

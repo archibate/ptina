@@ -15,10 +15,7 @@ class ModelPool(metaclass=Singleton):
 
     @ti.kernel
     def get_nverts(self) -> int:
-        ret = 0
-        for i in range(self.size.shape[0]):
-            ret += self.size[i]
-        return ret
+        return self.size[0]
 
     @ti.func
     def subscript(self, i):
@@ -26,9 +23,9 @@ class ModelPool(metaclass=Singleton):
 
     @ti.func
     def get_face(self, i):
-        a0 = self[i + 0]
-        a1 = self[i + 1]
-        a2 = self[i + 2]
+        a0 = self[i * 3 + 0]
+        a1 = self[i * 3 + 1]
+        a2 = self[i * 3 + 2]
         v0 = V(a0[0], a0[1], a0[2])
         vn0 = V(a0[3], a0[4], a0[5])
         vt0 = V(a0[6], a0[7])
