@@ -89,8 +89,33 @@ class ImagePool(metaclass=Singleton):
 
 @ti.data_oriented
 class Image:
+    is_taichi_class = True
+
     def __init__(self, id):
         self.id = id
+
+    @classmethod
+    def load(cls, arr):
+        id = ImagePool().load(arr)
+        return cls(id)
+
+    @classmethod
+    def new(cls, nx, ny):
+        id = ImagePool().new(nx, ny)
+        return cls(id)
+
+    @property
+    @ti.pyfunc
+    def nx(self):
+        return ImagePool().nx[self.id]
+
+    @property
+    @ti.pyfunc
+    def ny(self):
+        return ImagePool().ny[self.id]
+
+    def delete(self):
+        ImagePool().delete(self.id)
 
     def to_numpy(self):
         return ImagePool().to_numpy(self.id)
