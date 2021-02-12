@@ -2,6 +2,7 @@ from image import *
 from camera import *
 from model import *
 from light import *
+from materials import *
 from acceltree import *
 from stack import *
 
@@ -31,6 +32,8 @@ class PathEngine(metaclass=Singleton):
         result = V3(0.0)
         throughput = V3(1.0)
         last_brdf_pdf = 0.0
+
+        material = Mirror()
 
         while depth < 4 and Vany(throughput > eps):
             depth += 1
@@ -62,15 +65,14 @@ class PathEngine(metaclass=Singleton):
             li = LightPool().sample(hitpos, random3())
             occ = BVHTree().intersect(Ray(hitpos, li.dir), avoid)
             if occ.hit == 0 or occ.depth > li.dis:
-                brdf_clr = V3(1.0)
+                brdf_clr = material.brdf(normal, -r.d, li.dir)
                 brdf_pdf = Vavg(brdf_clr)
                 mis = power_heuristic(li.pdf, brdf_pdf)
                 direct_li = mis * li.color * brdf_clr * dot_or_zero(normal, li.dir)
                 result += throughput * direct_li
             '''
 
-            outdir = reflect(r.d, normal)
-            brdf = namespace(color=V3(1.0), pdf=inf, outdir=outdir)
+            brdf = material.bounce(normal, -r.d, random3())
 
             throughput *= brdf.color
             r.o = hitpos
