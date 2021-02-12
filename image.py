@@ -2,34 +2,55 @@ from session import *
 
 
 @ti.data_oriented
-class Image:
+class ImagePool:
     is_taichi_class = True
 
-    def __init__(self, nx, ny):
-        self.nx = nx
-        self.ny = ny
-        self.sess = get_session()
-        self.base = self.sess.f_mman.malloc(nx * ny * 4)
+    def __init__(self, size=2**22, count=2**8):
+        self.mman = MemoryAllocator(size)
+        self.idman = IdAllocator(count)
+        self.meta = ti.field(int, count * 3)
+        self.root = ti.field(float, size)
 
-    def __del__(self):
-        self.sess.f_mman.free(self.base)
+    @ti.pyfunc
+    def nx(self, i):
+        return self.meta[i * 3 + 0]
+
+    @ti.pyfunc
+    def ny(self, i):
+        return self.meta[i * 3 + 1]
+
+    @ti.pyfunc
+    def base(self, i):
+        return self.meta[i * 3 + 2]
+
+    @ti.pyfunc
+    def set_nx(self, i, val):
+        self.meta[i * 3 + 0] = val
+
+    @ti.pyfunc
+    def set_ny(self, i, val):
+        self.meta[i * 3 + 1] = val
+
+    @ti.pyfunc
+    def set_base(self, i, val):
+        self.meta[i * 3 + 2] = val
 
     @ti.func
-    def subscript(self, x, y):
-        index = self.base + (x * self.ny + y) * 4
-        return tovector([self.sess.f_root[index + i] for i in range(4)])
+    def subscript(self, i, x, y):
+        index = self.base(i) + (x * self.ny(i) + y) * 4
+        return tovector([self.root[index + j] for j in range(4)])
 
     @ti.kernel
-    def _to_numpy(self, arr: ti.ext_arr()):
-        for x, y in ti.ndrange(self.nx, self.ny):
-            val = self[x, y]
+    def do_to_numpy(self, idx: int, arr: ti.ext_arr()):
+        for x, y in ti.ndrange(self.nx(idx), self.ny(idx)):
+            val = self[idx, x, y]
             for k in ti.static(range(4)):
                 arr[x, y, k] = val[k]
 
     @ti.kernel
-    def _to_numpy_normalized(self, arr: ti.ext_arr()):
-        for x, y in ti.ndrange(self.nx, self.ny):
-            val = self[x, y]
+    def do_to_numpy_normalized(self, idx: int, arr: ti.ext_arr()):
+        for x, y in ti.ndrange(self.nx(idx), self.ny(idx)):
+            val = self[idx, x, y]
             if val.w != 0:
                 val.xyz /= val.w
             else:
@@ -37,21 +58,67 @@ class Image:
             for k in ti.static(range(3)):
                 arr[x, y, k] = val[k]
 
+    @ti.kernel
+    def do_from_numpy(self, idx: int, arr: ti.ext_arr()):
+        for x, y in ti.ndrange(self.nx(idx), self.ny(idx)):
+            for k in ti.static(range(4)):
+                pass#self[idx, x, y][k] = arr[x, y, k]
+
+
+@ti.data_oriented
+class Image:
+    is_taichi_class = True
+
+    def __init__(self, nx, ny):
+        self.idx = pool.idman.malloc()
+        self.base = pool.mman.malloc(nx * ny * 4)
+        self.nx = nx
+        self.ny = ny
+
+    @property
+    def nx(self):
+        return pool.nx(self.idx)
+
+    @nx.setter
+    def nx(self, val):
+        pool.set_nx(self.idx, val)
+
+    @property
+    def ny(self):
+        return pool.ny(self.idx)
+
+    @ny.setter
+    def ny(self, val):
+        pool.set_ny(self.idx, val)
+
+    @property
+    def base(self):
+        return pool.base(self.idx)
+
+    @base.setter
+    def base(self, val):
+        pool.set_base(self.idx, val)
+
+    def close(self):
+        pool.idman.free(self.idx)
+        pool.mman.free(self.base)
+
+    @ti.func
+    def subscript(self, x, y):
+        return pool.subscript(self.idx, x, y)
+
     def to_numpy(self):
         arr = np.empty((self.nx, self.ny, 4), dtype=np.float32)
-        self._to_numpy(arr)
+        pool.do_to_numpy(self.idx, arr)
         return arr
 
     def to_numpy_normalized(self):
         arr = np.empty((self.nx, self.ny, 3), dtype=np.float32)
-        self._to_numpy_normalized(arr)
+        pool.do_to_numpy_normalized(self.idx, arr)
         return arr
 
-    @ti.kernel
-    def from_numpy(self, arr: ti.ext_arr()):
-        for x, y in ti.ndrange(self.nx, self.ny):
-            for k in ti.static(range(4)):
-                self[x, y][k] = arr[x, y, k]
+    def from_numpy(self, arr):
+        pool.do_from_numpy(self.idx, arr)
 
     @classmethod
     def load(cls, arr):
@@ -72,3 +139,10 @@ class Image:
         self.from_numpy(arr)
 
         return self
+
+
+if __name__ == '__main__':
+    ti.init(print_ir=True)
+    pool = ImagePool()
+    im = Image.load('assets/cloth.jpg')
+    ti.imshow(im.to_numpy())

@@ -34,21 +34,15 @@ class MemoryAllocator:
         self.free_chunk.insert(i, new_chunk)
 
 
-@ti.data_oriented
-class Session:
-    def __init__(self, size):
-        self.size = size
-        self.f_mman = MemoryAllocator(self.size)
-        self.f_root = ti.field(float, self.size)
+class IdAllocator:
+    def __init__(self, count):
+        self.count = count
+        self.water = 0
 
+    def malloc(self):
+        id = self.water
+        self.water += 1
+        return id
 
-_pysession = None
-
-def get_session():
-    assert _pysession is not None, 'Session not started, please run init_session()'
-    return _pysession
-
-
-def init_session(size=2**22):
-    global _pysession
-    _pysession = Session(size)
+    def free(self, id):
+        pass
