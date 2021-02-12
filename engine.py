@@ -30,12 +30,13 @@ class PathEngine(metaclass=Singleton):
         avoid = -1
         depth = 0
         result = V3(0.0)
+        importance = 1.0
         throughput = V3(1.0)
         last_brdf_pdf = 0.0
 
-        material = Mirror()
+        material = Phong()
 
-        while depth < 4 and Vany(throughput > eps):
+        while depth < 4 and Vany(throughput > eps) and importance > eps:
             depth += 1
 
             r.d = r.d.normalized()
@@ -73,13 +74,13 @@ class PathEngine(metaclass=Singleton):
             '''
 
             brdf = material.bounce(normal, -r.d, random3())
-
+            importance *= brdf.impo
             throughput *= brdf.color
             r.o = hitpos
             r.d = brdf.outdir
             last_brdf_pdf = brdf.pdf
 
-        return result
+        return result, importance
 
     @ti.kernel
     def render(self):
@@ -91,8 +92,8 @@ class PathEngine(metaclass=Singleton):
             x = (i + dx) / self.film.nx * 2 - 1
             y = (j + dy) / self.film.ny * 2 - 1
             ray = camera.generate(x, y)
-            clr = self.trace(ray)
-            self.film[i, j] += V34(clr, 1.0)
+            clr, impo = self.trace(ray)
+            self.film[i, j] += V34(clr, impo)
 
             Stack().unset()
 
