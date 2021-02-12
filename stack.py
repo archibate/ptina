@@ -1,15 +1,16 @@
 from common import *
+from localarray import *
 
 
 @ti.data_oriented
-class Stack(metaclass=Singleton):
-    def __init__(self, N_mt=512 * 512, N_len=32, field=None):
+class GlobalStack(metaclass=Singleton):
+    def __init__(self, N_mt=512 * 512, N_len=32):
         if ti.cfg.arch == ti.cpu and ti.cfg.cpu_max_num_threads == 1 or ti.cfg.arch == ti.cc:
             N_mt = 1
         print('[Tina] Using', N_mt, 'threads')
         self.N_mt = N_mt
         self.N_len = N_len
-        self.val = ti.field(int) if field is None else field
+        self.val = ti.field(int)
         self.blk1 = ti.root.dense(ti.i, N_mt)
         self.blk2 = self.blk1.dense(ti.j, N_len)
         self.blk2.place(self.val)
@@ -53,3 +54,51 @@ class Stack(metaclass=Singleton):
             val = self.val[self.mtid, l - 1]
             self.len[self.mtid] = l - 1
             return val
+
+
+@ti.data_oriented
+class LocalStack(metaclass=Singleton):
+    def __init__(self, size=64):
+        self.size = size
+
+    def set(self, mtid):
+        print('local stack!')
+        self._proxy = self.Proxy(self.size)
+
+    def get(self):
+        return self._proxy
+
+    def unset(self):
+        del self._proxy
+
+    @ti.data_oriented
+    class Proxy:
+        def __init__(self, size):
+            self.val = LocalArray(int, size)
+            self.len = ti.expr_init(0)
+
+        @ti.func
+        def size(self):
+            return self.len
+
+        @ti.func
+        def clear(self):
+            self.len = 0
+
+        @ti.func
+        def push(self, val):
+            self.val[self.len] = val
+            self.len += 1
+
+        @ti.func
+        def pop(self):
+            self.len -= 1
+            val = self.val[self.len]
+            return val
+
+
+def Stack():
+    if ti.cfg.arch in [ti.cc, ti.opengl]:
+        return LocalStack()
+    else:
+        return GlobalStack()

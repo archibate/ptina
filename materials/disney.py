@@ -6,10 +6,10 @@ from .microfacet import *
 class Disney(namespace):
     @ti.func
     def __init__(self,
-            basecolor=V3(0.01),
+            basecolor=V3(1.0),
             metallic=0.0,
             subsurface=0.0,
-            roughness=0.4,
+            roughness=1.0,
             specular=0.5,
             specularTint=0.4,
             sheen=0.0,
