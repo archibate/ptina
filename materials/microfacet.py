@@ -18,8 +18,9 @@ def dielectricFresnel(etai, etao, cosi):
         b1, b2 = etao * cosi, etai * cost
         para = (a1 - a2) / (a1 + a2)
         perp = (b1 - b2) / (b1 + b2)
+        ret = 0.5 * (para**2 + perp**2)
 
-        return 0.5 * (para**2 + perp**2)
+    return ret
 
 
 @ti.func
@@ -41,3 +42,15 @@ def smithGGX(cosi, alpha):
     a = alpha**2
     b = cosi**2
     return 1 / (cosi + ti.sqrt(a + b - a * b))
+
+
+@ti.func
+def sample_GTR1(u, v, alpha):
+    u = ti.sqrt(alpha**(2 - 2 * u) - 1) / (alpha**2 - 1)
+    return spherical(u, v)
+
+
+@ti.func
+def sample_GTR2(u, v, alpha):
+    u = ti.sqrt((1 - u) / (1 - u * (1 - alpha**2)))
+    return spherical(u, v)

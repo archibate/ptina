@@ -7,7 +7,7 @@ class Disney(namespace):
     @ti.func
     def __init__(self,
             basecolor=V3(1.0),
-            metallic=0.0,
+            metallic=1.0,
             subsurface=0.0,
             roughness=0.4,
             specular=0.5,
@@ -87,7 +87,8 @@ class Disney(namespace):
             Gr = smithGGX(cosi, 0.25) * smithGGX(coso, 0.25)
             Fr = lerp(Foh, 0.04, 1.0)
 
-            diffuse = 1 / ti.pi * lerp(self.subsurface, Fd, ss) * self.basecolor + Fsheen
+            diffuse = 1 / ti.pi * lerp(self.subsurface, Fd, ss) \
+                    * self.basecolor + Fsheen
             specular = Gs * Fs * Ds + 0.25 * self.clearcoat * Gr * Fr * Dr
             transmit = 1 / ti.pi * fdf * Ds * self.basecolor
 
@@ -99,6 +100,112 @@ class Disney(namespace):
 
     @ti.func
     def bounce(self, normal, indir, samp):
-        outdir = tanspace(normal) @ spherical(ti.sqrt(samp.x), samp.y)
-        brdf = self.brdf(normal, outdir, indir)
-        return BSDFSample(outdir, Vavg(brdf), brdf * ti.pi)
+        result = BSDFSample.invalid()
+
+        etai, etao = 1.0, self.ior
+        if self.transmission != 0 and normal.dot(indir) < 0:
+            normal = -normal
+            etai = self.ior
+            etao = 1.0
+        eta = etai / etao
+
+        choice = Choice(samp.z)
+        specrate = lerp(self.transmission, lerp(self.metallic, 
+            self.specular * 0.08, 1.0), 1.0)
+        coatrate = 0.04 * self.clearcoat
+
+        specrate = lerp(specrate, 0.2, 1.0)
+        if coatrate != 0:
+            coatrate = lerp(coatrate, 0.2, 1.0)
+
+        if choice(coatrate):
+            alpha = self.clearcoatAlpha
+            halfdir = tanspace(normal) @ sample_GTR1(samp.x, samp.y, alpha)
+            outdir = reflect(-indir, halfdir)
+
+            cosi = indir.dot(normal)
+            coso = outdir.dot(normal)
+            cosh = dot_or_zero(halfdir, normal)
+            cosoh = dot_or_zero(halfdir, outdir)
+            if cosoh > 0:
+                Dr = GTR1(cosoh, alpha)
+                Foh = schlickFresnel(cosoh)
+                Gr = smithGGX(cosi, 0.25) * smithGGX(coso, 0.25)
+                Fr = lerp(Foh, 0.04, 1.0)
+
+                result.outdir = outdir
+                partial = self.clearcoat * Gr * Fr * coso * cosi
+                result.pdf = Dr * partial
+                result.color = partial / choice.pdf
+
+        elif choice(specrate):
+            alpha = self.alpha
+            halfdir = tanspace(normal) @ sample_GTR2(samp.x, samp.y, alpha)
+            outdir = reflect(-indir, halfdir)
+
+            cosi = indir.dot(normal)
+            coso = outdir.dot(normal)
+            cosh = dot_or_zero(halfdir, normal)
+            cosoh = dot_or_zero(halfdir, outdir)
+            if cosoh > 0:
+                Ds = GTR2(cosoh, alpha)
+
+                if choice(self.transmission):
+                    fdf = dielectricFresnel(etao, etai, cosoh)
+                    reflrate = lerp(fdf, 0.2, 1.0)
+
+                    if ti.random() < reflrate:
+                        outdir = reflect(-indir, halfdir)
+                        result.outdir = outdir
+                        result.pdf = Ds * fdf
+                        result.color = self.basecolor * \
+                                fdf * self.transmission / choice.pdf
+
+                    else:
+                        has_r, outdir = refract(-indir, halfdir, eta)
+                        if has_r:
+                            result.outdir = outdir
+                            result.pdf = Ds * (1 - fdf)
+                            result.color = self.basecolor * \
+                                    (1 - fdf) * self.transmission / choice.pdf
+
+                else:
+                    Foh = schlickFresnel(cosoh)
+                    Fs = lerp(Foh, self.speccolor, V3(1.0))
+                    Gs = smithGGX(cosi, alpha) * smithGGX(coso, alpha)
+
+                    result.outdir = outdir
+                    partial = Gs * 4 * coso * cosi
+                    result.pdf = Ds * Vavg(Fs) * partial
+                    result.color = Fs * partial / choice.pdf
+
+        else:
+            outdir = tanspace(normal) @ spherical(ti.sqrt(samp.x), samp.y)
+
+            halfdir = (indir + outdir).normalized()
+            cosi = indir.dot(normal)
+            coso = outdir.dot(normal)
+            cosh = dot_or_zero(halfdir, normal)
+            cosoh = dot_or_zero(halfdir, outdir)
+
+            Fi = schlickFresnel(cosi)
+            Fo = schlickFresnel(coso)
+            Fd90 = 0.5 + 2 * cosoh**2 * self.roughness
+            Fd = lerp(Fi, 1.0, Fd90) * lerp(Fo, 1.0, Fd90)
+
+            Fss90 = cosoh**2 * self.roughness
+            Fss = lerp(Fi, 1.0, Fss90) * lerp(Fo, 1.0, Fss90)
+            ss = 1.25 * (Fss * (1 / (cosi + coso) - 0.5) + 0.5)
+
+            Foh = schlickFresnel(cosoh)
+            Fsheen = Foh * self.sheen * self.sheencolor
+
+            diffuse = 1 / ti.pi * lerp(self.subsurface, Fd, ss) \
+                    * self.basecolor + Fsheen
+
+            result.outdir = outdir
+            result.pdf = 1 / ti.pi
+            result.color = diffuse * ti.pi * \
+                    (1 - self.metallic) * (1 - self.transmission) / choice.pdf
+
+        return result

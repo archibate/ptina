@@ -111,5 +111,6 @@ LightPool().count[None] = 1
 ModelPool().load('assets/sphere.obj')
 BVHTree().build()
 
-PathEngine().render()
+for i in range(12):
+    PathEngine().render()
 ti.imshow(PathEngine().film.to_numpy_normalized())

@@ -16,6 +16,36 @@ class BSDFSample(namespace):
 
 
 @ti.data_oriented
+class Choice(namespace):
+    @ti.func
+    def __init__(self, w):
+        self.pdf = 1.0
+        self.w = w
+
+    @ti.func
+    def __call__(self, r):
+        ret = ti.random() < r
+        if ret:
+            self.pdf *= r
+        else:
+            self.pdf *= 1 - r
+        return ret
+
+    @ti.func
+    def call(self, r):
+        ret = 0
+        if self.w < r:
+            self.w /= r
+            self.pdf *= r
+            ret = 1
+        else:
+            self.w = (self.w - r) / (1 - r)
+            self.pdf *= 1 - r
+            ret = 0
+        return ret
+
+
+@ti.data_oriented
 class Mirror(namespace):
     @ti.func
     def __init__(self, color=V3(1.0)):
