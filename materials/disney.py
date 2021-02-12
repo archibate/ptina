@@ -148,7 +148,7 @@ class Disney(namespace):
             coso = dot_or_zero(outdir, normal)
             cosh = dot_or_zero(halfdir, normal)
             cosoh = dot_or_zero(halfdir, outdir)
-            if cosoh > 0:
+            if cosoh > 0 and coso > 0:
                 Ds = GTR2(cosh, alpha)
 
                 if choice(self.transmission):
@@ -156,7 +156,6 @@ class Disney(namespace):
                     reflrate = lerp(fdf, 0.2, 1.0)
 
                     if ti.random() < reflrate:
-                        outdir = reflect(-indir, halfdir)
                         result.outdir = outdir
                         result.pdf = Ds * fdf
                         result.color = self.basecolor * \
@@ -180,7 +179,8 @@ class Disney(namespace):
                     result.outdir = outdir
                     partial = Gs * 4 * coso * cosi
                     result.pdf = Ds * Vavg(Fs) * partial
-                    result.color = Fs * partial / choice.pdf
+                    result.color = Fs * partial \
+                            * (1 - self.transmission) / choice.pdf
                     result.impo = 1
 
         else:
