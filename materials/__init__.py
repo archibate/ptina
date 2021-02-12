@@ -23,7 +23,7 @@ class Choice(namespace):
         self.w = w
 
     @ti.func
-    def __call__(self, r):
+    def call(self, r):
         ret = ti.random() < r
         if ret:
             self.pdf *= r
@@ -32,7 +32,7 @@ class Choice(namespace):
         return ret
 
     @ti.func
-    def call(self, r):
+    def __call__(self, r):
         ret = 0
         if self.w < r:
             self.w /= r

@@ -9,7 +9,7 @@ class Disney(namespace):
             basecolor=V3(1.0),
             metallic=1.0,
             subsurface=0.0,
-            roughness=0.4,
+            roughness=0.8,
             specular=0.5,
             specularTint=0.4,
             sheen=0.0,
@@ -128,7 +128,7 @@ class Disney(namespace):
             cosh = dot_or_zero(halfdir, normal)
             cosoh = dot_or_zero(halfdir, outdir)
             if cosoh > 0:
-                Dr = GTR1(cosoh, alpha)
+                Dr = GTR1(cosh, alpha)
                 Foh = schlickFresnel(cosoh)
                 Gr = smithGGX(cosi, 0.25) * smithGGX(coso, 0.25)
                 Fr = lerp(Foh, 0.04, 1.0)
@@ -137,18 +137,19 @@ class Disney(namespace):
                 partial = self.clearcoat * Gr * Fr * coso * cosi
                 result.pdf = Dr * partial
                 result.color = partial / choice.pdf
+                result.impo = 1
 
         elif choice(specrate):
             alpha = self.alpha
             halfdir = tanspace(normal) @ sample_GTR2(samp.x, samp.y, alpha)
             outdir = reflect(-indir, halfdir)
 
-            cosi = indir.dot(normal)
-            coso = outdir.dot(normal)
+            cosi = dot_or_zero(indir, normal)
+            coso = dot_or_zero(outdir, normal)
             cosh = dot_or_zero(halfdir, normal)
             cosoh = dot_or_zero(halfdir, outdir)
             if cosoh > 0:
-                Ds = GTR2(cosoh, alpha)
+                Ds = GTR2(cosh, alpha)
 
                 if choice(self.transmission):
                     fdf = dielectricFresnel(etao, etai, cosoh)
@@ -159,15 +160,17 @@ class Disney(namespace):
                         result.outdir = outdir
                         result.pdf = Ds * fdf
                         result.color = self.basecolor * \
-                                fdf * self.transmission / choice.pdf
+                                fdf * self.transmission / reflrate / choice.pdf
+                        result.impo = 1
 
                     else:
                         has_r, outdir = refract(-indir, halfdir, eta)
                         if has_r:
                             result.outdir = outdir
                             result.pdf = Ds * (1 - fdf)
-                            result.color = self.basecolor * \
-                                    (1 - fdf) * self.transmission / choice.pdf
+                            result.color = self.basecolor * (1 - fdf) \
+                                    * self.transmission / reflrate / choice.pdf
+                            result.impo = 1
 
                 else:
                     Foh = schlickFresnel(cosoh)
@@ -178,6 +181,7 @@ class Disney(namespace):
                     partial = Gs * 4 * coso * cosi
                     result.pdf = Ds * Vavg(Fs) * partial
                     result.color = Fs * partial / choice.pdf
+                    result.impo = 1
 
         else:
             outdir = tanspace(normal) @ spherical(ti.sqrt(samp.x), samp.y)
@@ -207,5 +211,6 @@ class Disney(namespace):
             result.pdf = 1 / ti.pi
             result.color = diffuse * ti.pi * \
                     (1 - self.metallic) * (1 - self.transmission) / choice.pdf
+            result.impo = 1
 
         return result
