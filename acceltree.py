@@ -76,7 +76,7 @@ class _BVHTree:
         return ModelPool().get_face(index).intersect(ray)
 
     @ti.func
-    def intersect(self, ray):
+    def intersect(self, ray, avoid):
         stack = Stack().get()
         ntimes = 0
         stack.clear()
@@ -88,12 +88,13 @@ class _BVHTree:
 
             if self.dir[curr] == 0:
                 index = self.ind[curr]
-                hit = self.element_intersect(index, ray)
-                if hit.hit != 0 and hit.depth < ret.depth:
-                    ret.depth = hit.depth
-                    ret.index = index
-                    ret.uv = hit.uv
-                    ret.hit = 1
+                if index != avoid:
+                    hit = self.element_intersect(index, ray)
+                    if hit.hit != 0 and hit.depth < ret.depth:
+                        ret.depth = hit.depth
+                        ret.index = index
+                        ret.uv = hit.uv
+                        ret.hit = 1
                 continue
 
             boxhit = Box(self.min[curr], self.max[curr]).intersect(ray)
@@ -129,5 +130,5 @@ class BVHTree(metaclass=Singleton):
         self.core.build(pmin, pmax)
 
     @ti.func
-    def intersect(self, ray):
-        return self.core.intersect(ray)
+    def intersect(self, ray, avoid):
+        return self.core.intersect(ray, avoid)

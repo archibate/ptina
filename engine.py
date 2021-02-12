@@ -32,17 +32,22 @@ class PathEngine(metaclass=Singleton):
         throughput = V3(1.0)
         last_brdf_pdf = 0.0
 
-        while depth < 4 and Vany(throughput > 0):
+        while depth < 4 and Vany(throughput > eps):
             depth += 1
 
-            hit = BVHTree().intersect(r)
+            r.d = r.d.normalized()
+            hit = BVHTree().intersect(r, avoid)
 
+            '''
             lit = LightPool().hit(r)
             if hit.hit == 0 or lit.dis < hit.depth:
                 mis = power_heuristic(last_brdf_pdf, lit.pdf)
                 direct_li = mis * lit.color
                 result += throughput * direct_li
+            '''
+
             if hit.hit == 0:
+                result += throughput * gammize(self.bgm(*dir2tex(r.d)).xyz)
                 break
 
             avoid = hit.index
@@ -50,23 +55,28 @@ class PathEngine(metaclass=Singleton):
             normal = face.normal(hit)
             hitpos = r.o + hit.depth * r.d
 
+            if r.d.dot(normal) > 0:
+                normal = -normal
+
+            '''
             li = LightPool().sample(hitpos, random3())
-            occ = BVHTree().intersect(Ray(hitpos, li.dir))
+            occ = BVHTree().intersect(Ray(hitpos, li.dir), avoid)
             if occ.hit == 0 or occ.depth > li.dis:
                 brdf_clr = V3(1.0)
                 brdf_pdf = Vavg(brdf_clr)
                 mis = power_heuristic(li.pdf, brdf_pdf)
                 direct_li = mis * li.color * brdf_clr * dot_or_zero(normal, li.dir)
                 result += throughput * direct_li
+            '''
 
-            brdf = namespace(color=V3(0.0), pdf=0.0, outdir=V3(0.0))
+            outdir = reflect(r.d, normal)
+            brdf = namespace(color=V3(1.0), pdf=inf, outdir=outdir)
+
             throughput *= brdf.color
             r.o = hitpos
             r.d = brdf.outdir
             last_brdf_pdf = brdf.pdf
 
-        #result += throughput * gammize(self.bgm(*dir2tex(r.d)).xyz)
-        ranprint(result)
         return result
 
     @ti.kernel
@@ -94,12 +104,12 @@ ModelPool()
 LightPool()
 PathEngine()
 
-LightPool().color[0] = V3(3)
+LightPool().color[0] = V3(0)
 LightPool().pos[0] = V(0, 0, 4)
 LightPool().radius[0] = 1.0
 LightPool().count[None] = 1
 
-ModelPool().load('assets/monkey.obj')
+ModelPool().load('assets/sphere.obj')
 BVHTree().build()
 
 PathEngine().render()

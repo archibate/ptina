@@ -54,7 +54,7 @@ class Face(namespace):
         self.vt2 = vt2
 
     @ti.func
-    def true_normal():
+    def true_normal(self):
         v0, v1, v2 = self.v0, self.v1, self.v2
         return (v1 - v0).cross(v2 - v0).normalized()
 
