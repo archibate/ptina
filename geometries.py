@@ -85,7 +85,7 @@ class Face(namespace):
         return (w.x * vt0 + w.y * vt1 + w.z * vt2)
 
     @ti.func
-    def getbox(self):
+    def getbbox(self):
         v0, v1, v2 = self.v0, self.v1, self.v2
         lo = min(v0, v1, v2)
         hi = max(v0, v1, v2)

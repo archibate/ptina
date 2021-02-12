@@ -1,5 +1,7 @@
 from image import *
 from camera import *
+from model import *
+from acceltree import *
 
 
 @ti.data_oriented
@@ -12,6 +14,10 @@ class PathEngine(metaclass=Singleton):
     @ti.func
     def trace(self, r):
         yield V3(0.0)
+
+        hit = BVHTree().intersect(r)
+        if hit.hit != 0:
+            yield V3(1.0)
 
         yield gammize(self.bgm(*dir2tex(r.d)).xyz)
 
@@ -27,6 +33,14 @@ class PathEngine(metaclass=Singleton):
             self.film[i, j] += V34(clr, 1.0)
 
 
+
+BVHTree()
+ImagePool()
+ModelPool()
+PathEngine()
+
+ModelPool().load('assets/cube.obj')
+BVHTree().build()
 
 PathEngine().render()
 ti.imshow(PathEngine().film.to_numpy_normalized())

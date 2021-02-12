@@ -1,15 +1,15 @@
-from session import *
+from model import *
 from geometries import *
 
 
 @ti.data_oriented
-class BVHTree:
-    def __init__(self):
-        self.N = N = 2**20
-        self.dir = ti.field(int, N)
-        self.ind = ti.field(int, N)
-        self.min = ti.Vector.field(3, float, N)
-        self.max = ti.Vector.field(3, float, N)
+class _BVHTree:
+    def __init__(self, size):
+        self.size = size
+        self.dir = ti.field(int, size)
+        self.ind = ti.field(int, size)
+        self.min = ti.Vector.field(3, float, size)
+        self.max = ti.Vector.field(3, float, size)
 
     def build(self, pmin, pmax):
         assert len(pmin) == len(pmax)
@@ -35,13 +35,13 @@ class BVHTree:
             if data_dir[i] == -1:
                 continue
             self.dir[i] = data_dir[i]
-            for k in ti.static(range(self.dim)):
+            for k in ti.static(range(3)):
                 self.min[i][k] = data_min[i, k]
                 self.max[i][k] = data_max[i, k]
             self.ind[i] = data_ind[i]
 
     def _build(self, data, pmin, pmax, pind, curr):
-        assert curr < self.N_tree, curr
+        assert curr < self.size, curr
         if not len(pind):
             return
 
@@ -72,7 +72,7 @@ class BVHTree:
 
     @ti.func
     def intersect(self, ray):
-        stack = get_stack()
+        stack = GlobalStack()
         ntimes = 0
         stack.clear()
         stack.push(1)
@@ -80,7 +80,7 @@ class BVHTree:
         hituv = V(0., 0.)
         ret = namespace(hit=0, depth=inf, index=hitind, uv=hituv)
 
-        while ntimes < self.N and stack.size() != 0:
+        while ntimes < self.size and stack.size() != 0:
             curr = stack.pop()
 
             if self.dir[curr] == 0:
@@ -102,3 +102,29 @@ class BVHTree:
             stack.push(curr * 2 + 1)
 
         return ret
+
+
+@ti.data_oriented
+class BVHTree(metaclass=Singleton):
+    def __init__(self, size=2**20):
+        self.core = _BVHTree(size)
+
+    @ti.kernel
+    def _dump_face_bboxes(self, nfaces: int, pmin: ti.ext_arr(), pmax: ti.ext_arr()):
+        for i in range(nfaces):
+            bbox = ModelPool().get_face(i).getbbox()
+            for k in ti.static(range(3)):
+                pmin[i, k] = bbox.lo[k]
+                pmax[i, k] = bbox.hi[k]
+
+    def build(self):
+        nverts = ModelPool().get_nverts()
+        nfaces = nverts // 3
+        pmin = np.empty((nfaces, 3))
+        pmax = np.empty((nfaces, 3))
+        self._dump_face_bboxes(nfaces, pmin, pmax)
+        self.core.build(pmin, pmax)
+
+    @ti.func
+    def intersect(self, ray):
+        return self.core.intersect(ray)

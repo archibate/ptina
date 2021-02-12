@@ -6,12 +6,19 @@ from geometries import *
 class ModelPool(metaclass=Singleton):
     is_taichi_class = True
 
-    def __init__(self, size=2**20, count=2**8):
+    def __init__(self, size=2**20, count=2**6):
         self.mman = MemoryAllocator(size)
         self.idman = IdAllocator(count)
         self.beg = ti.field(int, count)
         self.size = ti.field(int, count)
         self.root = ti.field(float, size)
+
+    @ti.kernel
+    def get_nverts(self) -> int:
+        ret = 0
+        for i in range(self.size.shape[0]):
+            ret += self.size[i]
+        return ret
 
     @ti.func
     def subscript(self, i):
