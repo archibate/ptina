@@ -14,11 +14,6 @@ def power_heuristic(a, b):
     return a / (a + b)
 
 
-@ti.func
-def dot_or_zero(a, b):
-    return max(0, a.dot(b))
-
-
 @ti.data_oriented
 class PathEngine(metaclass=Singleton):
     def __init__(self):
@@ -34,7 +29,8 @@ class PathEngine(metaclass=Singleton):
         throughput = V3(1.0)
         last_brdf_pdf = 0.0
 
-        material = Phong()
+        #material = Phong()
+        material = Disney()
 
         while depth < 4 and Vany(throughput > eps) and importance > eps:
             depth += 1
@@ -99,7 +95,7 @@ class PathEngine(metaclass=Singleton):
 
 
 
-ti.init(ti.opengl)
+ti.init(ti.gpu)
 Stack()
 BVHTree()
 ImagePool()

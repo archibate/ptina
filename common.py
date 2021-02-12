@@ -243,6 +243,11 @@ def iceil(x):
 
 
 @ti.func
+def dot_or_zero(a, b):
+    return max(0.0, a.dot(b))
+
+
+@ti.func
 def bilerp(f: ti.template(), pos):
     p = float(pos)
     I = ifloor(p)

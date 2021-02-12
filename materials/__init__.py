@@ -75,3 +75,6 @@ class Phong(namespace):
         if outdir.dot(normal) >= 0:
             ret = BSDFSample(outdir, 1 / ti.pi, self.color)
         return ret
+
+
+from .disney import Disney
