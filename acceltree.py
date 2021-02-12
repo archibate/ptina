@@ -81,9 +81,7 @@ class _BVHTree:
         ntimes = 0
         stack.clear()
         stack.push(1)
-        hitind = -1
-        hituv = V(0., 0.)
-        ret = namespace(hit=0, depth=inf, index=hitind, uv=hituv)
+        ret = namespace(hit=0, depth=inf, index=-1, uv=V(0., 0.))
 
         while ntimes < self.size and stack.size() != 0:
             curr = stack.pop()

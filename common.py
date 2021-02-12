@@ -130,6 +130,13 @@ def V3(x):
         return V(x, x, x)
 
 
+def V4(x):
+    if isinstance(x, ti.Matrix):
+        return x
+    else:
+        return V(x, x, x, x)
+
+
 def Vavg(u):
     if isinstance(u, ti.Matrix):
         return u.sum() / len(u.entries)
@@ -379,6 +386,16 @@ def ranprint(*args, rate=1e-3):
             print(*args)
 
     func(rate)
+
+
+@ti.func
+def random2():
+    return V(ti.random(), ti.random())
+
+
+@ti.func
+def random3():
+    return V(ti.random(), ti.random(), ti.random())
 
 
 class namespace(dict):

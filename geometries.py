@@ -40,16 +40,6 @@ class Box(namespace):
 
 
 @ti.data_oriented
-class HitRecord(namespace):
-    @ti.func
-    def __init__(self, hit=0, depth=inf, uv=V(0, 0), id=-1):
-        self.hit = hit
-        self.depth = depth
-        self.uv = uv
-        self.id = id
-
-
-@ti.data_oriented
 class Face(namespace):
     @ti.func
     def __init__(self, v0, v1, v2, vn0, vn1, vn2, vt0, vt1, vt2):
@@ -120,4 +110,31 @@ class Face(namespace):
                     if 0 <= t and s + t <= 1:
                         depth = r
                         hit = 1
-        return HitRecord(hit, depth, V(s, t))
+        return namespace(hit=hit, depth=depth, uv=V(s, t))
+
+
+@ti.data_oriented
+class Sphere(namespace):
+    @ti.func
+    def __init__(self, pos, rad2):
+        self.pos = pos
+        self.rad2 = rad2
+
+    @multireturn
+    @ti.func
+    def intersect(self, ray):
+        yield 0.0
+
+        op = self.pos - ray.o
+        b = op.dot(ray.d)
+        det = b * b + self.rad2 - op.norm_sqr()
+        if det < 0:
+            yield 0.0
+        det = ti.sqrt(det)
+        t = b - det
+        if t > eps:
+            yield t
+        t = b + det
+        if t > eps:
+            yield t
+        yield 0.0
