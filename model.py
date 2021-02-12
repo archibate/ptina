@@ -1,30 +1,27 @@
-from session import *
+from allocator import *
 from geometries import *
 
 
 @ti.data_oriented
-class Model:
+class ModelPool(metaclass=Singleton):
     is_taichi_class = True
 
-    def __init__(self, nverts):
-        self.nverts = nverts
-        self.sess = get_session()
-        self.base = self.sess.f_mman.malloc(nverts)
-
-    @ti.func
-    def __call__(self, i):
-        index = self.base + i * 8
-        return tovector([self.sess.f_root[index + i] for i in range(8)])
-
-    @property
-    def nfaces(self):
-        return self.nverts // 3
+    def __init__(self, size=2**20, count=2**8):
+        self.mman = MemoryAllocator(size)
+        self.idman = IdAllocator(count)
+        self.beg = ti.field(int, count)
+        self.size = ti.field(int, count)
+        self.root = ti.field(float, size)
 
     @ti.func
     def subscript(self, i):
-        a0 = self(i * 3 + 0)
-        a1 = self(i * 3 + 1)
-        a2 = self(i * 3 + 2)
+        return tovector([self.root[i * 8 + j] for j in range(8)])
+
+    @ti.func
+    def get_face(self, i):
+        a0 = self[i + 0]
+        a1 = self[i + 1]
+        a2 = self[i + 2]
         v0 = V(a0[0], a0[1], a0[2])
         vn0 = V(a0[3], a0[4], a0[5])
         vt0 = V(a0[6], a0[7])
@@ -37,24 +34,37 @@ class Model:
         return Face(v0, v1, v2, vn0, vn1, vn2, vt0, vt1, vt2)
 
     @ti.kernel
-    def _to_numpy(self, arr: ti.ext_arr()):
-        for i in range(self.nverts):
+    def _to_numpy(self, id: int, arr: ti.ext_arr()):
+        beg, end = self.beg[id], self.beg[id] + self.size[id]
+        for i in range(beg, end):
             for k in ti.static(range(8)):
-                arr[i, k] = self(i)[k]
+                arr[i - beg, k] = self[i][k]
 
-    def to_numpy(self):
-        arr = np.empty((self.nverts, 8), dtype=np.float32)
-        self._to_numpy(arr)
+    def to_numpy(self, id):
+        arr = np.empty((self.size[id], 8), dtype=np.float32)
+        self._to_numpy(id, arr)
         return arr
 
     @ti.kernel
-    def from_numpy(self, arr: ti.ext_arr()):
-        for i in range(self.nverts):
+    def from_numpy(self, id: int, arr: ti.ext_arr()):
+        beg, end = self.beg[id], self.beg[id] + self.size[id]
+        for i in range(beg, end):
             for k in ti.static(range(8)):
-                self(i)[k] = arr[i, k]
+                self[i][k] = arr[i - beg, k]
 
-    @classmethod
-    def load(cls, arr):
+    def new(self, nverts):
+        id = self.idman.malloc()
+        base = self.mman.malloc(nverts)
+        self.beg[id] = base
+        self.size[id] = nverts
+        return id
+
+    def delete(self, id):
+        base = self.base[id]
+        self.idman.free(id)
+        self.mman.free(base)
+
+    def load(self, arr):
         if isinstance(arr, str):
             from tools.readobj import readobj
             arr = readobj(arr)
@@ -72,8 +82,15 @@ class Model:
             arr = arr.astype(np.float32)
 
         nverts = arr.shape[0]
-        self = cls(nverts)
 
-        self.from_numpy(arr)
+        id = self.new(nverts)
+        self.from_numpy(id, arr)
+        return id
 
-        return self
+
+if __name__ == '__main__':
+    ti.init(print_ir=True)
+    ModelPool()
+
+    im = ModelPool().load('assets/monkey.obj')
+    print(ModelPool().to_numpy(im))
