@@ -86,7 +86,7 @@ class _BVHTree:
         while ntimes < self.size and stack.size() != 0:
             curr = stack.pop()
 
-            if self.dir[curr] == 0:
+            if self.dir[curr] == 0:  # is leaf node
                 index = self.ind[curr]
                 if index != avoid:
                     hit = self.element_intersect(index, ray)

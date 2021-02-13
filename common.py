@@ -401,6 +401,25 @@ def random3():
     return V(ti.random(), ti.random(), ti.random())
 
 
+def clamp_unsigned(x):
+    def _clamp_unsigned_to_range(npty, val):
+        iif = np.iinfo(npty)
+        if iif.min <= val <= iif.max:
+            return val
+        cap = (1 << iif.bits)
+        if not (0 <= val < cap):
+            return val
+        new_val = val - cap
+        return new_val
+
+    if ti.inside_kernel():
+        if ti.impl.get_runtime().default_ip in {ti.i32, ti.u32}:
+            return _clamp_unsigned_to_range(np.int32, x)
+        elif ti.impl.get_runtime().default_ip in {ti.i64, ti.u64}:
+            return _clamp_unsigned_to_range(np.int64, x)
+    return x
+
+
 class namespace(dict):
     is_taichi_class = True
 
