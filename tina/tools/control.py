@@ -1,4 +1,4 @@
-from common import *
+from tina.common import *
 
 
 print('[Tina] Hint: MMB to orbit, Shift+MMB to pan, wheel to zoom')
@@ -105,7 +105,7 @@ class Control:
             self._on_zoom(delta, origin)
 
     def get_perspective(self):
-        from .matrix import lookat, orthogonal, perspective
+        from tina.tools.matrix import lookat, orthogonal, perspective
 
         aspect = self.gui.res[0] / self.gui.res[1]
         if self.is_ortho:

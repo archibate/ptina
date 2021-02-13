@@ -1,5 +1,5 @@
-from allocator import *
-from geometries import *
+from tina.allocator import *
+from tina.geometries import *
 
 
 @ti.data_oriented
@@ -50,7 +50,7 @@ class ModelPool(metaclass=Singleton):
 
     def load(self, arr):
         if isinstance(arr, str):
-            from tools.readobj import readobj
+            from tina.tools.readobj import readobj
             arr = readobj(arr)
 
         if isinstance(arr, dict):

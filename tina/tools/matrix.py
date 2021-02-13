@@ -1,4 +1,4 @@
-from common import *
+from tina.common import *
 
 
 def identity():

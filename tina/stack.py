@@ -1,5 +1,5 @@
-from common import *
-from localarray import *
+from tina.common import *
+from tina.localarray import *
 
 
 @ti.data_oriented

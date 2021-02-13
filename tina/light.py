@@ -1,5 +1,5 @@
-from common import *
-from geometries import *
+from tina.common import *
+from tina.geometries import *
 
 
 @ti.data_oriented

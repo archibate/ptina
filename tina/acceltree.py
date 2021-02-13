@@ -1,6 +1,6 @@
-from model import *
-from geometries import *
-from stack import *
+from tina.model import *
+from tina.geometries import *
+from tina.stack import *
 
 
 @ti.data_oriented

@@ -1,11 +1,10 @@
-from image import *
-from camera import *
-from model import *
-from light import *
-from tools.control import *
-from materials import *
-from acceltree import *
-from stack import *
+from tina.image import *
+from tina.camera import *
+from tina.model import *
+from tina.light import *
+from tina.materials import *
+from tina.acceltree import *
+from tina.stack import *
 
 
 @ti.func
@@ -94,34 +93,3 @@ class PathEngine(metaclass=Singleton):
 
     def get_image(self, hdr=False):
         return self.film.to_numpy_normalized(ToneMapping() if not hdr else None)
-
-
-
-ti.init(ti.gpu)
-Stack()
-Camera()
-BVHTree()
-ImagePool()
-ModelPool()
-LightPool()
-ToneMapping()
-PathEngine()
-
-if 1:
-    LightPool().color[0] = V3(4)
-    LightPool().pos[0] = V(0, 0, 4)
-    LightPool().radius[0] = 1.0
-    LightPool().count[None] = 1
-
-ModelPool().load('assets/monkey.obj')
-BVHTree().build()
-
-gui = ti.GUI()
-gui.control = Control(gui)
-while gui.running:
-    if gui.control.process_events():
-        PathEngine().film.clear()
-    Camera().set_perspective(gui.control.get_perspective())
-    PathEngine().render()
-    gui.set_image(PathEngine().get_image())
-    gui.show()

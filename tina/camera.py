@@ -1,4 +1,4 @@
-from geometries import *
+from tina.geometries import *
 
 
 @ti.data_oriented
@@ -29,7 +29,7 @@ class Camera(metaclass=Singleton):
 
         @ti.materialize_callback
         def init_camera():
-            from tools.matrix import ortho, lookat
+            from tina.tools.matrix import ortho, lookat
             self.set_perspective(ortho() @ lookat())
 
     def set_perspective(self, pers):

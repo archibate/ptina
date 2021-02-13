@@ -1,4 +1,4 @@
-from allocator import *
+from tina.allocator import *
 
 
 @ti.data_oriented

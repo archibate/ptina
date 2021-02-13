@@ -1,4 +1,4 @@
-from common import *
+from tina.common import *
 
 
 @ti.data_oriented
@@ -107,4 +107,4 @@ class Phong(namespace):
         return ret
 
 
-from .disney import Disney
+from tina.materials.disney import Disney

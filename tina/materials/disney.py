@@ -1,5 +1,5 @@
-from . import *
-from .microfacet import *
+from tina.materials import *
+from tina.materials.microfacet import *
 
 
 @ti.data_oriented
