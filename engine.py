@@ -31,6 +31,7 @@ class PathEngine(metaclass=Singleton):
 
         #material = Phong()
         material = Disney()
+        #material = Lambert()
 
         while depth < 4 and Vany(throughput > eps) and importance > eps:
             depth += 1
@@ -77,7 +78,7 @@ class PathEngine(metaclass=Singleton):
 
     @ti.kernel
     def render(self):
-        camera = Camera(V(0.0, 0.0, 4.0))
+        camera = Camera(V(0.0, 0.0, 4.8))
         for i, j in ti.ndrange(self.film.nx, self.film.ny):
             Stack().set(i * self.film.nx + j)
 
@@ -90,14 +91,18 @@ class PathEngine(metaclass=Singleton):
 
             Stack().unset()
 
+    def get_image(self, hdr=False):
+        return self.film.to_numpy_normalized(ToneMapping() if not hdr else None)
 
 
-ti.init(ti.opengl)
+
+ti.init(ti.gpu)
 Stack()
 BVHTree()
 ImagePool()
 ModelPool()
 LightPool()
+ToneMapping()
 PathEngine()
 
 if 0:
@@ -106,12 +111,11 @@ if 0:
     LightPool().radius[0] = 1.0
     LightPool().count[None] = 1
 
-ModelPool().load('assets/sphere.obj')
+ModelPool().load('assets/sphere.obj')#../ti-raytrace/model/sphere.obj')
 BVHTree().build()
 
 gui = ti.GUI()
 while gui.running:
     PathEngine().render()
-    img = gammize(PathEngine().film.to_numpy_normalized())
-    gui.set_image(img)
+    gui.set_image(PathEngine().get_image())
     gui.show()

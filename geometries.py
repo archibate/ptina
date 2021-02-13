@@ -30,8 +30,11 @@ class Box(namespace):
                 i1 = (self.lo[i] - r.o[i]) / r.d[i]
                 i2 = (self.hi[i] - r.o[i]) / r.d[i]
 
-                far = min(far, max(i1, i2))
-                near = max(near, min(i1, i2))
+                if i1 > i2:
+                    i1, i2 = i2, i1
+
+                far = min(far, i2)
+                near = max(near, i1)
 
                 if near > far:
                     hit = 0

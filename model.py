@@ -7,15 +7,8 @@ class ModelPool(metaclass=Singleton):
     is_taichi_class = True
 
     def __init__(self, size=2**20, count=2**6):
-        self.mman = MemoryAllocator(size)
-        self.idman = IdAllocator(count)
-        self.beg = ti.field(int, count)
-        self.size = ti.field(int, count)
+        self.nverts = ti.field(int, ())
         self.root = ti.field(float, size)
-
-    @ti.kernel
-    def get_nverts(self) -> int:
-        return self.size[0]
 
     @ti.func
     def subscript(self, i):
@@ -38,35 +31,22 @@ class ModelPool(metaclass=Singleton):
         return Face(v0, v1, v2, vn0, vn1, vn2, vt0, vt1, vt2)
 
     @ti.kernel
-    def _to_numpy(self, id: int, arr: ti.ext_arr()):
-        beg, end = self.beg[id], self.beg[id] + self.size[id]
-        for i in range(beg, end):
+    def _to_numpy(self, arr: ti.ext_arr()):
+        for i in range(self.nverts[None]):
             for k in ti.static(range(8)):
-                arr[i - beg, k] = self[i][k]
+                arr[i, k] = self[i][k]
 
     def to_numpy(self, id):
-        arr = np.empty((self.size[id], 8), dtype=np.float32)
-        self._to_numpy(id, arr)
+        arr = np.empty((self.nverts[None], 8), dtype=np.float32)
+        self._to_numpy(arr)
         return arr
 
     @ti.kernel
-    def from_numpy(self, id: int, arr: ti.ext_arr()):
-        beg, end = self.beg[id], self.beg[id] + self.size[id]
-        for i in range(beg, end):
+    def from_numpy(self, arr: ti.ext_arr()):
+        self.nverts[None] = arr.shape[0]
+        for i in range(self.nverts[None]):
             for k in ti.static(range(8)):
-                self[i][k] = arr[i - beg, k]
-
-    def new(self, nverts):
-        id = self.idman.malloc()
-        base = self.mman.malloc(nverts)
-        self.beg[id] = base
-        self.size[id] = nverts
-        return id
-
-    def delete(self, id):
-        base = self.base[id]
-        self.idman.free(id)
-        self.mman.free(base)
+                self[i][k] = arr[i, k]
 
     def load(self, arr):
         if isinstance(arr, str):
@@ -85,10 +65,7 @@ class ModelPool(metaclass=Singleton):
         if arr.dtype == np.float64:
             arr = arr.astype(np.float32)
 
-        nverts = arr.shape[0]
-
-        id = self.new(nverts)
-        self.from_numpy(id, arr)
+        self.from_numpy(arr)
         return id
 
 
