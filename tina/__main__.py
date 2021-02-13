@@ -1,5 +1,6 @@
 from tina.engine import *
 from tina.tools.control import *
+from tina.tools.readgltf import readgltf
 
 
 ti.init(ti.gpu)
@@ -12,12 +13,15 @@ LightPool()
 ToneMapping()
 PathEngine()
 
-LightPool().color[0] = V3(4)
-LightPool().pos[0] = V(0, 0, 4)
-LightPool().radius[0] = 1.0
-LightPool().count[None] = 1
+#LightPool().color[0] = V3(4)
+#LightPool().pos[0] = V(0, 0, 4)
+#LightPool().radius[0] = 1.0
+#LightPool().count[None] = 1
 
 ModelPool().load('assets/monkey.obj')
+#mesh = readgltf('assets/cornell.gltf').astype(np.float32)
+#print(mesh.shape)
+#ModelPool().from_numpy(mesh)
 BVHTree().build()
 
 gui = ti.GUI()

@@ -66,7 +66,6 @@ class ModelPool(metaclass=Singleton):
             arr = arr.astype(np.float32)
 
         self.from_numpy(arr)
-        return id
 
 
 if __name__ == '__main__':

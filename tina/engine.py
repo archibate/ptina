@@ -39,16 +39,16 @@ class PathEngine(metaclass=Singleton):
             r.d = r.d.normalized()
             hit = BVHTree().intersect(r, avoid)
 
-            #'''
+            '''
             lit = LightPool().hit(r)
             if hit.hit == 0 or lit.dis < hit.depth:
                 mis = power_heuristic(last_brdf_pdf, lit.pdf)
                 direct_li = mis * lit.color
                 result += throughput * direct_li
-            #'''
+            '''
 
             if hit.hit == 0:
-                #result += throughput * self.bgm(*dir2tex(r.d)).xyz
+                result += throughput * self.bgm(*dir2tex(r.d)).xyz
                 break
 
             avoid = hit.index
@@ -56,7 +56,7 @@ class PathEngine(metaclass=Singleton):
             normal = face.normal(hit)
             hitpos = r.o + hit.depth * r.d
 
-            #'''
+            '''
             li = LightPool().sample(hitpos, random3())
             occ = BVHTree().intersect(Ray(hitpos, li.dir), avoid)
             if occ.hit == 0 or occ.depth > li.dis:
@@ -65,7 +65,7 @@ class PathEngine(metaclass=Singleton):
                 mis = power_heuristic(li.pdf, brdf_pdf)
                 direct_li = mis * li.color * brdf_clr * dot_or_zero(normal, li.dir)
                 result += throughput * direct_li
-            #'''
+            '''
 
             brdf = material.bounce(normal, -r.d, random3())
             importance *= brdf.impo
