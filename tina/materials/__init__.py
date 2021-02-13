@@ -52,11 +52,11 @@ class Mirror(namespace):
         self.color = color
 
     @ti.func
-    def brdf(self, normal, indir, outdir):
+    def brdf(self, normal, sign, indir, outdir):
         return V3(0.0)
 
     @ti.func
-    def bounce(self, normal, indir, samp):
+    def bounce(self, normal, sign, indir, samp):
         outdir = reflect(-indir, normal)
         return BSDFSample(outdir, inf, self.color)
 
@@ -68,13 +68,13 @@ class Lambert(namespace):
         self.color = color
 
     @ti.func
-    def brdf(self, normal, indir, outdir):
+    def brdf(self, normal, sign, indir, outdir):
         cosi = dot_or_zero(indir, normal)
         coso = dot_or_zero(outdir, normal)
         return self.color / ti.pi
 
     @ti.func
-    def bounce(self, normal, indir, samp):
+    def bounce(self, normal, sign, indir, samp):
         outdir = tanspace(normal) @ spherical(ti.sqrt(samp.x), samp.y)
         return BSDFSample(outdir, 1 / ti.pi, self.color)
 
@@ -87,7 +87,7 @@ class Phong(namespace):
         self.shineness = shineness
 
     @ti.func
-    def brdf(self, normal, indir, outdir):
+    def brdf(self, normal, sign, indir, outdir):
         m = self.shineness
         refldir = reflect(-indir, normal)
         cosor = dot_or_zero(outdir, refldir)
@@ -95,7 +95,7 @@ class Phong(namespace):
         return self.color / ti.pi
 
     @ti.func
-    def bounce(self, normal, indir, samp):
+    def bounce(self, normal, sign, indir, samp):
         m = self.shineness
         cosor = samp.x**(1 / (m + 1))
         ndf = cosor**m * (m + 2) / 2

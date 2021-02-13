@@ -18,10 +18,10 @@ PathEngine()
 #LightPool().radius[0] = 1.0
 #LightPool().count[None] = 1
 
-ModelPool().load('assets/monkey.obj')
-#mesh = readgltf('assets/cornell.gltf').astype(np.float32)
-#print(mesh.shape)
-#ModelPool().from_numpy(mesh)
+#ModelPool().load('assets/monkey.obj')
+mesh = readgltf('assets/cornell.gltf').astype(np.float32)
+print(len(mesh) // 3, 'triangles')
+ModelPool().from_numpy(mesh)
 BVHTree().build()
 
 gui = ti.GUI()

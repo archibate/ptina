@@ -56,18 +56,22 @@ class PathEngine(metaclass=Singleton):
             normal = face.normal(hit)
             hitpos = r.o + hit.depth * r.d
 
+            sign = -r.d.dot(normal)
+            if sign < 0:
+                normal = -normal
+
             '''
             li = LightPool().sample(hitpos, random3())
             occ = BVHTree().intersect(Ray(hitpos, li.dir), avoid)
             if occ.hit == 0 or occ.depth > li.dis:
-                brdf_clr = material.brdf(normal, -r.d, li.dir)
+                brdf_clr = material.brdf(normal, sign, -r.d, li.dir)
                 brdf_pdf = Vavg(brdf_clr)
                 mis = power_heuristic(li.pdf, brdf_pdf)
                 direct_li = mis * li.color * brdf_clr * dot_or_zero(normal, li.dir)
                 result += throughput * direct_li
             '''
 
-            brdf = material.bounce(normal, -r.d, random3())
+            brdf = material.bounce(normal, sign, -r.d, random3())
             importance *= brdf.impo
             throughput *= brdf.color
             r.o = hitpos

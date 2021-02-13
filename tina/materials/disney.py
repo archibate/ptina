@@ -44,10 +44,9 @@ class Disney(namespace):
         self.clearcoatAlpha = lerp(self.clearcoatGloss, 0.1, 0.001)
 
     @ti.func
-    def brdf(self, normal, indir, outdir):
+    def brdf(self, normal, sign, indir, outdir):
         etai, etao = 1.0, self.ior
-        if self.transmission != 0 and normal.dot(indir) < 0:
-            normal = -normal
+        if sign < 0:
             etai = self.ior
             etao = 1.0
         eta = etai / etao
@@ -101,12 +100,11 @@ class Disney(namespace):
         return result
 
     @ti.func
-    def bounce(self, normal, indir, samp):
+    def bounce(self, normal, sign, indir, samp):
         result = BSDFSample.invalid()
 
         etai, etao = 1.0, self.ior
-        if self.transmission != 0 and normal.dot(indir) < 0:
-            normal = -normal
+        if sign < 0:
             etai = self.ior
             etao = 1.0
         eta = etai / etao

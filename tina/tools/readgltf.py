@@ -76,6 +76,7 @@ def readgltf(path):
 
 
     def process_primitive(prim, world):
+        indices = prim.indices
         position = prim.attributes.POSITION
         normal = prim.attributes.NORMAL
         texcoord = prim.attributes.TEXCOORD_0
@@ -85,8 +86,9 @@ def readgltf(path):
             normal = accessors[normal]
         if texcoord is not None:
             texcoord = accessors[texcoord]
-        #assert prim.indices == 3, (prim.indices, mesh.name)
-        primitives.append((position, normal, texcoord, world))
+        if indices is not None:
+            indices = accessors[indices]
+        primitives.append((position, normal, texcoord, world, indices))
 
 
     def process_mesh(mesh, world):
@@ -132,17 +134,18 @@ def readgltf(path):
         return x / np.linalg.norm(x, axis=1, keepdims=True)
 
 
-    def transform_primitive(p, n, t, w):
+    def transform_primitive(p, n, t, w, f):
         assert w is not None
         assert p is not None
         assert n is not None
+        assert f is not None
 
         if t is None:
             t = np.zeros((p.shape[0], 2))
 
-        p = p.astype(np.float64)
-        n = n.astype(np.float64)
-        t = t.astype(np.float64)
+        p = p.astype(np.float64)[f]
+        n = n.astype(np.float64)[f]
+        t = t.astype(np.float64)[f]
         w = w.astype(np.float64)
 
         w = w.transpose()
@@ -154,8 +157,8 @@ def readgltf(path):
 
 
     arrays = []
-    for p, n, t, w in primitives:
-        arrays.append(transform_primitive(p, n, t, w))
+    for p, n, t, w, f in primitives:
+        arrays.append(transform_primitive(p, n, t, w, f))
 
     if not arrays:
         ret = np.zeros((0, 8))
@@ -163,3 +166,8 @@ def readgltf(path):
         ret = np.concatenate(arrays, axis=0)
 
     return ret
+
+
+if __name__ == '__main__':
+    ret = readgltf('assets/luxball.gltf')
+    print(ret.shape)
