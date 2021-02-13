@@ -420,6 +420,11 @@ def clamp_unsigned(x):
     return x
 
 
+@ti.pyfunc
+def truth(x):
+    return (-1 if x != 0 else 0)
+
+
 class namespace(dict):
     is_taichi_class = True
 

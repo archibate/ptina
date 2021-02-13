@@ -76,6 +76,25 @@ class _BVHTree:
         return ModelPool().get_face(index).intersect(ray)
 
     @ti.func
+    def process_leaf(self, ret, curr, ray, avoid):
+        index = self.ind[curr]
+        if index != avoid:
+            hit = self.element_intersect(index, ray)
+            if hit.hit != 0 and hit.depth < ret.depth:
+                ret.depth = hit.depth
+                ret.index = index
+                ret.uv = hit.uv
+                ret.hit = 1
+
+    @ti.func
+    def is_leaf(self, curr):
+        return self.dir[curr] == 0
+
+    @ti.func
+    def getbox(self, curr):
+        return Box(self.min[curr], self.max[curr])
+
+    @ti.func
     def intersect(self, ray, avoid):
         stack = Stack().get()
         ntimes = 0
@@ -86,19 +105,12 @@ class _BVHTree:
         while ntimes < self.size and stack.size() != 0:
             curr = stack.pop()
 
-            if self.dir[curr] == 0:  # is leaf node
-                index = self.ind[curr]
-                if index != avoid:
-                    hit = self.element_intersect(index, ray)
-                    if hit.hit != 0 and hit.depth < ret.depth:
-                        ret.depth = hit.depth
-                        ret.index = index
-                        ret.uv = hit.uv
-                        ret.hit = 1
+            if self.is_leaf(curr):
+                self.process_leaf(ret, curr, ray, avoid)
                 continue
 
-            boxhit = Box(self.min[curr], self.max[curr]).intersect(ray)
-            if boxhit.hit == 0:
+            hit_box = self.getbox(curr).intersect(ray).hit == 0
+            if not hit_box:
                 continue
 
             ntimes += 1
@@ -106,6 +118,47 @@ class _BVHTree:
             stack.push(curr * 2 + 1)
 
         return ret
+
+    '''
+    # https://developer.nvidia.com/blog/thinking-parallel-part-ii-tree-traversal-gpu/
+    @ti.func
+    def alternative_intersect(self, ray, avoid):
+        stack = Stack().get()
+        ntimes = 0
+        ret = namespace(hit=0, depth=inf, index=-1, uv=V(0., 0.))
+
+        stack.clear()
+        stack.push(0)
+        curr = 1  # root node
+
+        while ntimes < self.size:
+            left = curr * 2
+            right = curr * 2 + 1
+
+            hit_left = truth(self.getbox(left).intersect(ray).hit)
+            hit_right = truth(self.getbox(right).intersect(ray).hit)
+
+            if hit_left and truth(self.is_leaf(left)):
+                self.process_leaf(ret, left, ray, avoid)
+
+            if hit_right and truth(self.is_leaf(right)):
+                self.process_leaf(ret, right, ray, avoid)
+
+            go_left = truth(hit_left and not self.is_leaf(left))
+            go_right = truth(hit_right and not self.is_leaf(right))
+
+            if not go_left and not go_right:
+                curr = stack.pop()
+            else:
+                curr = left if go_left else right
+                if go_left and go_right:
+                    stack.push(curr)
+
+            if curr == 0:
+                break
+
+        return ret
+    '''
 
 
 @ti.data_oriented
