@@ -116,9 +116,9 @@ class Disney(namespace):
             self.specular * 0.08, 1.0), 1.0)
         coatrate = 0.04 * self.clearcoat
 
-        specrate = lerp(specrate, 0.2, 1.0)
+        specrate = lerp(specrate, 0.1, 1.0)
         if coatrate != 0:
-            coatrate = lerp(coatrate, 0.2, 1.0)
+            coatrate = lerp(coatrate, 0.1, 1.0)
 
         if choice(coatrate):
             alpha = self.clearcoatAlpha
