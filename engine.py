@@ -2,6 +2,7 @@ from image import *
 from camera import *
 from model import *
 from light import *
+from tools.control import *
 from materials import *
 from acceltree import *
 from stack import *
@@ -98,6 +99,7 @@ class PathEngine(metaclass=Singleton):
 
 ti.init(ti.gpu)
 Stack()
+Camera()
 BVHTree()
 ImagePool()
 ModelPool()
@@ -115,7 +117,11 @@ ModelPool().load('assets/sphere.obj')#../ti-raytrace/model/sphere.obj')
 BVHTree().build()
 
 gui = ti.GUI()
+gui.control = Control(gui)
 while gui.running:
+    if gui.control.process_events():
+        PathEngine().film.clear()
+    Camera().set_perspective(gui.control.get_perspective())
     PathEngine().render()
     gui.set_image(PathEngine().get_image())
     gui.show()

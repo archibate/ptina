@@ -19,6 +19,12 @@ class ImagePool(metaclass=Singleton):
         return self.root[index]
 
     @ti.kernel
+    def clear(self, id: int):
+        nx, ny = self.nx[id], self.ny[id]
+        for x, y in ti.ndrange(nx, ny):
+            self[id, x, y] = V4(0.0)
+
+    @ti.kernel
     def _to_numpy(self, id: int, arr: ti.ext_arr()):
         nx, ny = self.nx[id], self.ny[id]
         for x, y in ti.ndrange(nx, ny):
@@ -118,7 +124,10 @@ class Image:
         return ImagePool().ny[self.id]
 
     def delete(self):
-        ImagePool().delete(self.id)
+        return ImagePool().delete(self.id)
+
+    def clear(self):
+        return ImagePool().clear(self.id)
 
     def to_numpy(self):
         return ImagePool().to_numpy(self.id)

@@ -1,4 +1,4 @@
-from ..common import *
+from common import *
 
 
 print('[Tina] Hint: MMB to orbit, Shift+MMB to pan, wheel to zoom')
@@ -21,13 +21,13 @@ class Control:
     def process_events(self):
         ret = False
         for e in self.gui.get_events():
-            if self.on_event(e):
+            if self._on_event(e):
                 ret = True
-        if self.check_mouse_move():
+        if self._check_mouse_move():
             ret = True
         return ret
 
-    def on_pan(self, delta, origin):
+    def _on_pan(self, delta, origin):
         right = np.cross(self.up, self.back)
         up = np.cross(self.back, right)
 
@@ -50,7 +50,7 @@ class Control:
         y = self.radius * np.cos(self.theta)
         return np.array([x, y, z], dtype=float)
 
-    def on_orbit(self, delta, origin):
+    def _on_orbit(self, delta, origin):
         delta_phi = -delta[0] * np.pi
         delta_theta = -delta[1] * np.pi
 
@@ -61,50 +61,50 @@ class Control:
         self.theta = np.clip(self.theta + delta_theta, -np.pi / 2, np.pi / 2)
         self.phi += delta_phi
 
-    def on_zoom(self, delta, origin):
+    def _on_zoom(self, delta, origin):
         self.radius *= pow(0.89, delta)
 
-    def on_fovadj(self, delta, origin):
+    def _on_fovadj(self, delta, origin):
         self.radius *= pow(0.89, delta)
         self.fov *= pow(0.89, -delta)
 
-    def on_lmb_drag(self, delta, origin):
+    def _on_lmb_drag(self, delta, origin):
         if not self.blendish:
             if self.gui.is_pressed(self.gui.CTRL):
                 delta = delta * 0.2
             if self.gui.is_pressed(self.gui.SHIFT):
                 delta = delta * 5
-            self.on_orbit(delta, origin)
+            self._on_orbit(delta, origin)
 
-    def on_mmb_drag(self, delta, origin):
+    def _on_mmb_drag(self, delta, origin):
         if self.blendish:
             if self.gui.is_pressed(self.gui.SHIFT):
-                self.on_pan(delta, origin)
+                self._on_pan(delta, origin)
             else:
-                self.on_orbit(delta, origin)
+                self._on_orbit(delta, origin)
 
-    def on_rmb_drag(self, delta, origin):
+    def _on_rmb_drag(self, delta, origin):
         if not self.blendish:
             if self.gui.is_pressed(self.gui.CTRL):
                 delta = delta * 0.2
             if self.gui.is_pressed(self.gui.SHIFT):
                 delta = delta * 5
-            self.on_pan(delta, origin)
+            self._on_pan(delta, origin)
 
-    def on_wheel(self, delta, origin):
+    def _on_wheel(self, delta, origin):
         if not self.blendish:
             if self.gui.is_pressed(self.gui.CTRL):
-                self.on_fovadj(delta, origin)
+                self._on_fovadj(delta, origin)
             else:
                 if self.gui.is_pressed(self.gui.CTRL):
                     delta = delta * 0.2
                 if self.gui.is_pressed(self.gui.SHIFT):
                     delta = delta * 5
-                self.on_zoom(delta, origin)
+                self._on_zoom(delta, origin)
         else:
-            self.on_zoom(delta, origin)
+            self._on_zoom(delta, origin)
 
-    def get_camera(self):
+    def get_perspective(self):
         from .matrix import lookat, orthogonal, perspective
 
         aspect = self.gui.res[0] / self.gui.res[1]
@@ -115,15 +115,9 @@ class Control:
             view = lookat(self.center, self.back, self.up)
             proj = perspective(self.fov, aspect)
 
-        return view, proj
+        return proj @ view
 
-    def apply_camera(self, engine):
-        ret = self.process_events()
-        view, proj = self.get_camera()
-        engine.set_camera(view, proj)
-        return ret
-
-    def on_event(self, e):
+    def _on_event(self, e):
         if e.type == self.gui.PRESS:
             if e.key == self.gui.TAB:
                 self.is_ortho = not self.is_ortho
@@ -135,12 +129,12 @@ class Control:
         elif e.type == self.gui.MOTION:
             if e.key == self.gui.WHEEL:
                 delta = e.delta[1] / 120
-                self.on_wheel(delta, np.array(e.pos))
+                self._on_wheel(delta, np.array(e.pos))
                 return True
 
         return False
 
-    def check_mouse_move(self):
+    def _check_mouse_move(self):
         ret = False
         curr_mouse = np.array(self.gui.get_cursor_pos())
         btn = list(map(self.gui.is_pressed, [self.gui.LMB, self.gui.MMB, self.gui.RMB]))
@@ -148,11 +142,11 @@ class Control:
             delta = curr_mouse - self.last_mouse
             if delta[0] or delta[1]:
                 if btn[0]:
-                    self.on_lmb_drag(delta, self.last_mouse)
+                    self._on_lmb_drag(delta, self.last_mouse)
                 if btn[1]:
-                    self.on_mmb_drag(delta, self.last_mouse)
+                    self._on_mmb_drag(delta, self.last_mouse)
                 if btn[2]:
-                    self.on_rmb_drag(delta, self.last_mouse)
+                    self._on_rmb_drag(delta, self.last_mouse)
                 ret = any(btn)
 
         if any(btn):
