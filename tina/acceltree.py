@@ -76,7 +76,7 @@ class _BVHTree:
         return ModelPool().get_face(index).intersect(ray)
 
     @ti.func
-    def process_leaf(self, ret, curr, ray, avoid):
+    def process_leaf(self, ret: ti.template(), curr, ray, avoid):
         index = self.ind[curr]
         if index != avoid:
             hit = self.element_intersect(index, ray)
@@ -109,7 +109,7 @@ class _BVHTree:
                 self.process_leaf(ret, curr, ray, avoid)
                 continue
 
-            hit_box = self.getbox(curr).intersect(ray).hit == 0
+            hit_box = self.getbox(curr).intersect(ray).hit != 0
             if not hit_box:
                 continue
 
