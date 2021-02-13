@@ -75,8 +75,22 @@ def readgltf(path):
         accessors.append(get_accessor_buffer(accessor))
 
 
+    def process_material(material):
+        pbr = material.pbrMetallicRoughness
+        basecolor = pbr.baseColorFactor[:3]
+        basecolorTex = pbr.baseColorTexture
+        metallic = pbr.metallicFactor
+        roughness = pbr.roughnessFactor
+        metallicRoughnessTex = pbr.metallicTexture
+
+
+    for material in model.materials:
+        materials.append(process_material(material))
+
+
     def process_primitive(prim, world):
         indices = prim.indices
+        material = prim.material
         position = prim.attributes.POSITION
         normal = prim.attributes.NORMAL
         texcoord = prim.attributes.TEXCOORD_0
@@ -88,7 +102,9 @@ def readgltf(path):
             texcoord = accessors[texcoord]
         if indices is not None:
             indices = accessors[indices]
-        primitives.append((position, normal, texcoord, world, indices))
+        if material is not None:
+            mtlid = materials[material]
+        primitives.append((position, normal, texcoord, world, indices, mtlid))
 
 
     def process_mesh(mesh, world):
@@ -157,17 +173,19 @@ def readgltf(path):
 
 
     arrays = []
+    mtlids = []
     for p, n, t, w, f in primitives:
-        arrays.append(transform_primitive(p, n, t, w, f))
+        a, m = transform_primitive(p, n, t, w, f)
+        arrays.append(a)
+        mtlids.append(m)
+    assert len(arrays) and len(mtlids)
 
-    if not arrays:
-        ret = np.zeros((0, 8))
-    else:
-        ret = np.concatenate(arrays, axis=0)
+    arr = np.concatenate(arrays, axis=0)
+    mtlids = np.concatenate(mtlids, axis=0)
 
-    return ret
+    return arr, mtlids
 
 
 if __name__ == '__main__':
-    ret = readgltf('assets/luxball.gltf')
-    print(ret.shape)
+    arr, mtlids = readgltf('assets/luxball.gltf')
+    print(arr, mtlids)
