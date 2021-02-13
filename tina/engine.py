@@ -18,7 +18,11 @@ def power_heuristic(a, b):
 class PathEngine(metaclass=Singleton):
     def __init__(self):
         self.bgm = Image.load('assets/env.png')
-        self.film = Image.new(512, 512)
+
+        nx, ny = 512, 512
+        self.film = Image.new(nx, ny)
+        self.normal = Image.new(nx, ny)
+        self.albedo = Image.new(nx, ny)
 
     @ti.func
     def trace(self, r):
@@ -52,9 +56,7 @@ class PathEngine(metaclass=Singleton):
                 break
 
             avoid = hit.index
-            face = ModelPool().get_face(hit.index)
-            normal = face.normal(hit)
-            hitpos = r.o + hit.depth * r.d
+            hitpos, normal, sign = self.get_geometries(hit, r)
 
             sign = -r.d.dot(normal)
             if sign < 0:
@@ -82,18 +84,50 @@ class PathEngine(metaclass=Singleton):
 
     @ti.kernel
     def render(self):
-        camera = Camera(V(0.0, 0.0, 4.8))
         for i, j in ti.ndrange(self.film.nx, self.film.ny):
             Stack().set(i * self.film.nx + j)
 
-            dx, dy = 0.5, 0.5
+            dx, dy = random2()
             x = (i + dx) / self.film.nx * 2 - 1
             y = (j + dy) / self.film.ny * 2 - 1
-            ray = camera.generate(x, y)
+            ray = Camera().generate(x, y)
+
             clr, impo = self.trace(ray)
             self.film[i, j] += V34(clr, impo)
 
             Stack().unset()
 
-    def get_image(self, hdr=False):
-        return self.film.to_numpy_normalized(ToneMapping() if not hdr else None)
+    @ti.func
+    def get_geometries(self, hit, r):
+        face = ModelPool().get_face(hit.index)
+        normal = face.normal(hit)
+        hitpos = r.o + hit.depth * r.d
+
+        sign = -r.d.dot(normal)
+        if sign < 0:
+            normal = -normal
+
+        return hitpos, normal, sign
+
+    @ti.kernel
+    def render_aov(self):
+        for i, j in ti.ndrange(self.film.nx, self.film.ny):
+            Stack().set(i * self.film.nx + j)
+
+            albedo = V3(0.0)
+            normal = V3(0.0)
+
+            dx, dy = random2()
+            x = (i + dx) / self.film.nx * 2 - 1
+            y = (j + dy) / self.film.ny * 2 - 1
+            ray = Camera().generate(x, y)
+            hit = BVHTree().intersect(ray, -1)
+
+            if hit.hit == 1:
+                hitpos, normal, sign = self.get_geometries(hit, ray)
+                albedo = V3(1.0)
+
+            self.albedo[i, j] += V34(albedo, 1.0)
+            self.normal[i, j] += V34(normal, 1.0)
+
+            Stack().unset()

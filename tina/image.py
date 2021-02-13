@@ -1,11 +1,15 @@
 from tina.allocator import *
 
 
+def _NoToneMap(x):
+    return x
+
+
 @ti.data_oriented
 class ImagePool(metaclass=Singleton):
     is_taichi_class = True
 
-    def __init__(self, size=2**20, count=2**8):
+    def __init__(self, size=2**22, count=2**8):
         self.mman = MemoryAllocator(size)
         self.idman = IdAllocator(count)
         self.nx = ti.field(int, count)
@@ -52,7 +56,7 @@ class ImagePool(metaclass=Singleton):
 
     def to_numpy_normalized(self, id, tonemap=None):
         if tonemap is None:
-            tonemap = lambda x: x
+            tonemap = _NoToneMap
         arr = np.empty((self.nx[id], self.ny[id], 3), np.float32)
         self._to_numpy_normalized(id, arr, tonemap)
         return arr
@@ -137,6 +141,9 @@ class Image:
 
     def from_numpy(self, arr):
         return ImagePool().from_numpy(self.id, arr)
+
+    def get_image(self, aov=None, raw=False):
+        return self.to_numpy_normalized(ToneMapping() if not raw else None)
 
     @ti.func
     def subscript(self, x, y):
