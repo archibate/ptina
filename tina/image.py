@@ -165,7 +165,7 @@ class ToneMapping(metaclass=Singleton):
 
         @ti.materialize_callback
         def init_tonemap():
-            self.exposure[None] = 0.4
+            self.exposure[None] = 0.3
             self.gamma[None] = 1/2.2
 
     @ti.func

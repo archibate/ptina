@@ -45,7 +45,7 @@ class Box(namespace):
 @ti.data_oriented
 class Face(namespace):
     @ti.func
-    def __init__(self, v0, v1, v2, vn0, vn1, vn2, vt0, vt1, vt2):
+    def __init__(self, v0, v1, v2, vn0, vn1, vn2, vt0, vt1, vt2, mtlid):
         self.v0 = v0
         self.v1 = v1
         self.v2 = v2
@@ -55,6 +55,7 @@ class Face(namespace):
         self.vt0 = vt0
         self.vt1 = vt1
         self.vt2 = vt2
+        self.mtlid = mtlid
 
     @ti.func
     def true_normal(self):

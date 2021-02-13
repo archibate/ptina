@@ -18,6 +18,7 @@ def power_heuristic(a, b):
 class PathEngine(metaclass=Singleton):
     def __init__(self):
         self.bgm = Image.load('assets/env.png')
+        self.tex = Image.load('assets/cloth.jpg')
 
         nx, ny = 512, 512
         self.film = Image.new(nx, ny)
@@ -32,10 +33,6 @@ class PathEngine(metaclass=Singleton):
         importance = 1.0
         throughput = V3(1.0)
         last_brdf_pdf = 0.0
-
-        #material = Phong()
-        #material = Disney()
-        material = Lambert()
 
         while depth < 4 and Vany(throughput > eps) and importance > eps:
             depth += 1
@@ -56,7 +53,7 @@ class PathEngine(metaclass=Singleton):
                 break
 
             avoid = hit.index
-            hitpos, normal, sign = self.get_geometries(hit, r)
+            hitpos, normal, sign, material = self.get_geometries(hit, r)
 
             sign = -r.d.dot(normal)
             if sign < 0:
@@ -98,16 +95,23 @@ class PathEngine(metaclass=Singleton):
             Stack().unset()
 
     @ti.func
+    def get_material(self, mtlid):
+        material = Lambert(self.tex(*texcoord).xyz)
+        return material
+
+    @ti.func
     def get_geometries(self, hit, r):
         face = ModelPool().get_face(hit.index)
         normal = face.normal(hit)
+        texcoord = face.texcoord(hit)
         hitpos = r.o + hit.depth * r.d
 
         sign = -r.d.dot(normal)
         if sign < 0:
             normal = -normal
 
-        return hitpos, normal, sign
+        material = self.get_material(face.mtlid)
+        return hitpos, normal, sign, material
 
     @ti.kernel
     def render_aov(self):
@@ -124,7 +128,7 @@ class PathEngine(metaclass=Singleton):
             hit = BVHTree().intersect(ray, -1)
 
             if hit.hit == 1:
-                hitpos, normal, sign = self.get_geometries(hit, ray)
+                hitpos, normal, sign, material = self.get_geometries(hit, ray)
                 albedo = V3(1.0)
 
             self.albedo[i, j] += V34(albedo, 1.0)

@@ -6,13 +6,14 @@ from tina.geometries import *
 class ModelPool(metaclass=Singleton):
     is_taichi_class = True
 
-    def __init__(self, size=2**20, count=2**6):
-        self.nverts = ti.field(int, ())
-        self.root = ti.field(float, size)
+    def __init__(self, size=2**20):
+        self.nfaces = ti.field(int, ())
+        self.vertices = ti.field(float, size * 8 * 3)
+        self.mtlids = ti.field(int, size)
 
     @ti.func
     def subscript(self, i):
-        return tovector([self.root[i * 8 + j] for j in range(8)])
+        return tovector([self.vertices[i * 8 + j] for j in range(8)])
 
     @ti.func
     def get_face(self, i):
@@ -28,27 +29,33 @@ class ModelPool(metaclass=Singleton):
         v2 = V(a2[0], a2[1], a2[2])
         vn2 = V(a2[3], a2[4], a2[5])
         vt2 = V(a2[6], a2[7])
-        return Face(v0, v1, v2, vn0, vn1, vn2, vt0, vt1, vt2)
+        mtlid = self.mtlids[i]
+        return Face(v0, v1, v2, vn0, vn1, vn2, vt0, vt1, vt2, mtlid)
 
     @ti.kernel
-    def _to_numpy(self, arr: ti.ext_arr()):
-        for i in range(self.nverts[None]):
+    def _to_numpy(self, arr: ti.ext_arr(), mtlids: ti.ext_arr()):
+        for i in range(self.nfaces[None]):
+            mtlids[i] = self.mtlids[i]
+        for i in range(self.nfaces[None] * 3):
             for k in ti.static(range(8)):
                 arr[i, k] = self[i][k]
 
     def to_numpy(self, id):
-        arr = np.empty((self.nverts[None], 8), dtype=np.float32)
-        self._to_numpy(arr)
-        return arr
+        arr = np.empty((self.nfaces[None] * 3, 8), dtype=np.float32)
+        mtlids = np.empty(self.nfaces[None], dtype=np.int32)
+        self._to_numpy(arr, mtlids)
+        return arr, mtlids
 
     @ti.kernel
-    def from_numpy(self, arr: ti.ext_arr()):
-        self.nverts[None] = arr.shape[0]
-        for i in range(self.nverts[None]):
+    def from_numpy(self, arr: ti.ext_arr(), mtlids: ti.ext_arr()):
+        self.nfaces[None] = mtlids.shape[0]
+        for i in range(self.nfaces[None] * 3):
             for k in ti.static(range(8)):
                 self[i][k] = arr[i, k]
+        for i in range(self.nfaces[None]):
+            self.mtlids[i] = mtlids[i]
 
-    def load(self, arr):
+    def load(self, arr, mtlids=None):
         if isinstance(arr, str):
             from tina.tools.readobj import readobj
             arr = readobj(arr)
@@ -65,12 +72,11 @@ class ModelPool(metaclass=Singleton):
         if arr.dtype == np.float64:
             arr = arr.astype(np.float32)
 
-        self.from_numpy(arr)
+        assert arr.shape[0] % 3 == 0
+        if mtlids is None:
+            mtlids = np.zeros(arr.shape[0] // 3, dtype=np.int32)
+        else:
+            assert mtlids.shape[0] == arr.shape[0] // 3
+        assert mtlids.shape[0] < self.mtlids.shape[0], 'too many faces'
 
-
-if __name__ == '__main__':
-    ti.init(print_ir=True)
-    ModelPool()
-
-    im = ModelPool().load('assets/monkey.obj')
-    print(ModelPool().to_numpy(im))
+        self.from_numpy(arr, mtlids)

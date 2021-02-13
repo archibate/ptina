@@ -18,19 +18,22 @@ PathEngine()
 #LightPool().radius[0] = 1.0
 #LightPool().count[None] = 1
 
-#ModelPool().load('assets/monkey.obj')
-#mesh = readgltf('assets/cornell.gltf').astype(np.float32)
-mesh = readgltf('/tmp/luxball.gltf').astype(np.float32)
+#mesh = ti.readobj('assets/cube.obj')
+mesh = readgltf('assets/cornell.gltf').astype(np.float32)
 print(len(mesh) // 3, 'triangles')
-ModelPool().from_numpy(mesh)
+ModelPool().load(mesh)
+
 BVHTree().build()
 
 gui = ti.GUI()
 gui.control = Control(gui)
 while gui.running:
     if gui.control.process_events():
-        PathEngine().normal.clear()
+        #PathEngine().normal.clear()
+        PathEngine().film.clear()
     Camera().set_perspective(gui.control.get_perspective())
-    PathEngine().render_aov()
-    gui.set_image(PathEngine().normal.to_numpy_normalized() * 0.5 + 0.5)
+    PathEngine().render()
+    #PathEngine().render_aov()
+    #gui.set_image(PathEngine().normal.to_numpy_normalized() * 0.5 + 0.5)
+    gui.set_image(PathEngine().film.get_image())
     gui.show()

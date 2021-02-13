@@ -464,7 +464,7 @@ class namespace(dict):
             ti.assign(getattr(self, k), v)
 
     def variable(self):
-        return namespace(**self)
+        return self
 
 
 class listspace(list):

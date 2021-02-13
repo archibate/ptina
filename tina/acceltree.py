@@ -175,8 +175,7 @@ class BVHTree(metaclass=Singleton):
                 pmax[i, k] = bbox.hi[k]
 
     def build(self):
-        nverts = ModelPool().nverts[None]
-        nfaces = nverts // 3
+        nfaces = ModelPool().nfaces[None]
         pmin = np.empty((nfaces, 3))
         pmax = np.empty((nfaces, 3))
         self._dump_face_bboxes(nfaces, pmin, pmax)
