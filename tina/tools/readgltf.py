@@ -8,7 +8,7 @@ except ImportError:
 
 
 def readgltf(path):
-    print('loading GLTF', path)
+    print('[TinaGLTF] loading GLTF', path)
 
     root = GLTF.load(path)
     model = root.model
@@ -22,12 +22,12 @@ def readgltf(path):
 
     def load_uri(uri):
         if uri.startswith('data:'):
-            print('reading embed base64')
+            print('[TinaGLTF] reading embed base64')
             index = uri.index('base64,')
             data = uri[index + len('base64,'):]
             data = b64decode(data.encode('ascii'))
         else:
-            print('reading file', uri)
+            print('[TinaGLTF] reading file', uri)
             with open(uri, 'rb') as f:
                 data = f.read()
         return data
@@ -98,8 +98,9 @@ def readgltf(path):
         return np.swapaxes(im, 0, 1)
 
 
-    for image in model.images:
-        images.append(process_image(image))
+    if model.images is not None:
+        for image in model.images:
+            images.append(process_image(image))
 
 
     def process_material(material):
@@ -117,14 +118,6 @@ def readgltf(path):
             rt = mrt[:, :, 1]
         else:
             mt = rt = None
-        if r is None:
-            r = 1.0
-        if m is None:
-            m = 1.0
-        if b is None:
-            b = [1.0] * 3
-        else:
-            b = b[:3]
         return b, bt, m, mt, r, rt
 
 
@@ -150,7 +143,6 @@ def readgltf(path):
 
 
     def process_mesh(mesh, world):
-        print('processing mesh', mesh.name)
         for prim in mesh.primitives:
             process_primitive(prim, world)
 
@@ -163,7 +155,7 @@ def readgltf(path):
     def process_node(node, world=None):
         if world is None:
             world = matrix.identity()
-        print('processing node', node.name)
+        print('[TinaGLTF] processing node', node.name)
         local = get_node_local_matrix(node)
         world = world @ local
         _process_node(node, world)
@@ -227,6 +219,7 @@ def readgltf(path):
     vertices = np.concatenate(arrays, axis=0)
     mtlids = np.concatenate(mtlids, axis=0)
 
+    print('[TinaGLTF] loaded', len(mtlids), 'triangles')
     return vertices, mtlids, materials
 
 

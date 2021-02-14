@@ -164,6 +164,9 @@ class Image:
         I = V(x * (self.nx - 1), y * (self.ny - 1))
         return bilerp(self, I)
 
+    def variable(self):
+        return self
+
 
 @ti.data_oriented
 class ToneMapping(metaclass=Singleton):
