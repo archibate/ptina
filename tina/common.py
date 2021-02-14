@@ -521,3 +521,11 @@ class Singleton(type):
         if self._instance is None:
             self._instance = super().__call__(*args, **kwargs)
         return self._instance
+
+
+def please_install(name):
+    if ti.get_os_name() == 'win':
+        pip = 'python3 -m pip'
+    else:
+        pip = 'python -m pip'
+    raise ImportError(f'Please run `{pip} install -U {name}`') from None

@@ -1,31 +1,39 @@
 from tina.common import *
 from tina.tools import matrix
 from base64 import b64decode
-from gltflib import *
+try:
+    from gltflib import *
+except ImportError:
+    please_install('gltflib')
 
 
 def readgltf(path):
+    print('loading GLTF', path)
+
     root = GLTF.load(path)
     model = root.model
     buffers = []
     bufferViews = []
     accessors = []
+    materials = []
     primitives = []
+    images = []
 
 
     def load_uri(uri):
         if uri.startswith('data:'):
+            print('reading embed base64')
             index = uri.index('base64,')
             data = uri[index + len('base64,'):]
             data = b64decode(data.encode('ascii'))
         else:
+            print('reading file', uri)
             with open(uri, 'rb') as f:
                 data = f.read()
         return data
 
 
-    for i, buffer in enumerate(model.buffers):
-        print('loading buffer', i)
+    for buffer in model.buffers:
         buffers.append(load_uri(buffer.uri))
 
 
@@ -75,13 +83,37 @@ def readgltf(path):
         accessors.append(get_accessor_buffer(accessor))
 
 
+    def process_image(image):
+        if image.uri is not None:
+            buffer = load_uri(image.uri)
+        else:
+            buffer = bufferViews[image.bufferView]
+        try:
+            from PIL import Image
+        except ImportError:
+            please_install('pillow')
+        from io import BytesIO
+        with BytesIO(buffer) as f:
+            im = np.array(Image.open(f))
+        return np.swapaxes(im, 0, 1)
+
+
+    for image in model.images:
+        images.append(process_image(image))
+
+
     def process_material(material):
         pbr = material.pbrMetallicRoughness
-        basecolor = pbr.baseColorFactor[:3]
-        basecolorTex = pbr.baseColorTexture
-        metallic = pbr.metallicFactor
-        roughness = pbr.roughnessFactor
-        metallicRoughnessTex = pbr.metallicTexture
+        b = pbr.baseColorFactor
+        bt = pbr.baseColorTexture
+        m = pbr.metallicFactor
+        r = pbr.roughnessFactor
+        mrt = pbr.metallicRoughnessTexture
+        if bt is not None:
+            bt = images[bt.index]
+        if mrt is not None:
+            mrt = images[mrt.index]
+        return b, bt, m, r, mrt
 
 
     for material in model.materials:
@@ -102,9 +134,7 @@ def readgltf(path):
             texcoord = accessors[texcoord]
         if indices is not None:
             indices = accessors[indices]
-        if material is not None:
-            mtlid = materials[material]
-        primitives.append((position, normal, texcoord, world, indices, mtlid))
+        primitives.append((position, normal, texcoord, world, indices, material))
 
 
     def process_mesh(mesh, world):
@@ -150,7 +180,7 @@ def readgltf(path):
         return x / np.linalg.norm(x, axis=1, keepdims=True)
 
 
-    def transform_primitive(p, n, t, w, f):
+    def transform_primitive(p, n, t, w, f, m):
         assert w is not None
         assert p is not None
         assert n is not None
@@ -169,13 +199,14 @@ def readgltf(path):
         n = npnmlz((np34(n, 0) @ w)[:, :3])
 
         a = np.concatenate([p, n, t], axis=1)
-        return a
+        m = np.full(a.shape[0], m)
+        return a, m
 
 
     arrays = []
     mtlids = []
-    for p, n, t, w, f in primitives:
-        a, m = transform_primitive(p, n, t, w, f)
+    for p, n, t, w, f, m in primitives:
+        a, m = transform_primitive(p, n, t, w, f, m)
         arrays.append(a)
         mtlids.append(m)
     assert len(arrays) and len(mtlids)
@@ -183,9 +214,9 @@ def readgltf(path):
     arr = np.concatenate(arrays, axis=0)
     mtlids = np.concatenate(mtlids, axis=0)
 
-    return arr, mtlids
+    return arr, mtlids, materials
 
 
 if __name__ == '__main__':
-    arr, mtlids = readgltf('assets/luxball.gltf')
-    print(arr, mtlids)
+    arr, mtlids, materials = readgltf('assets/cornell.gltf')
+    print(materials)
