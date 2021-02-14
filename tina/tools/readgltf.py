@@ -199,7 +199,8 @@ def readgltf(path):
         n = npnmlz((np34(n, 0) @ w)[:, :3])
 
         a = np.concatenate([p, n, t], axis=1)
-        m = np.full(a.shape[0], m)
+        assert a.shape[0] % 3 == 0
+        m = np.full(a.shape[0] // 3, m)
         return a, m
 
 
@@ -211,12 +212,13 @@ def readgltf(path):
         mtlids.append(m)
     assert len(arrays) and len(mtlids)
 
-    arr = np.concatenate(arrays, axis=0)
+    vertices = np.concatenate(arrays, axis=0)
     mtlids = np.concatenate(mtlids, axis=0)
 
-    return arr, mtlids, materials
+    return vertices, mtlids, materials
 
 
 if __name__ == '__main__':
-    arr, mtlids, materials = readgltf('assets/cornell.gltf')
-    print(materials)
+    vertices, mtlids, materials = readgltf('assets/cornell.gltf')
+    print(vertices.shape)
+    print(mtlids.shape)

@@ -95,7 +95,7 @@ class PathEngine(metaclass=Singleton):
             Stack().unset()
 
     @ti.func
-    def get_material(self, mtlid):
+    def get_material(self, mtlid, texcoord):
         material = Lambert(self.tex(*texcoord).xyz)
         return material
 
@@ -110,7 +110,7 @@ class PathEngine(metaclass=Singleton):
         if sign < 0:
             normal = -normal
 
-        material = self.get_material(face.mtlid)
+        material = self.get_material(face.mtlid, texcoord)
         return hitpos, normal, sign, material
 
     @ti.kernel

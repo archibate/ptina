@@ -3,7 +3,7 @@ from tina.tools.control import *
 from tina.tools.readgltf import readgltf
 
 
-ti.init(ti.gpu)
+ti.init(ti.opengl)
 Stack()
 Camera()
 BVHTree()
@@ -19,9 +19,10 @@ PathEngine()
 #LightPool().count[None] = 1
 
 #mesh = ti.readobj('assets/cube.obj')
-mesh = readgltf('assets/cornell.gltf').astype(np.float32)
-print(len(mesh) // 3, 'triangles')
-ModelPool().load(mesh)
+vertices, mtlids, materials = readgltf('assets/cornell.gltf')
+print(mtlids)
+print(len(mtlids), 'triangles')
+ModelPool().load(vertices, mtlids)
 
 BVHTree().build()
 
