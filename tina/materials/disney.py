@@ -100,6 +100,12 @@ class Disney(namespace):
         return result
 
     @ti.func
+    def stupid_bounce(self, normal, sign, indir, samp):
+        outdir = tanspace(normal) @ spherical(ti.sqrt(samp.x), samp.y)
+        brdf = self.brdf(normal, sign, indir, outdir)
+        return BSDFSample(outdir, Vavg(brdf), brdf * ti.pi)
+
+    @ti.func
     def bounce(self, normal, sign, indir, samp):
         result = BSDFSample.invalid()
 
@@ -177,7 +183,7 @@ class Disney(namespace):
                     Gs = smithGGX(cosi, alpha) * smithGGX(coso, alpha)
 
                     result.outdir = outdir
-                    partial = Gs * 4 * coso * cosi
+                    partial = Gs * 4 * cosi * coso
                     result.pdf = Ds * Vavg(Fs) * partial
                     result.color = Fs * partial \
                             * (1 - self.transmission) / choice.pdf
