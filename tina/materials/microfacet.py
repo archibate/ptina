@@ -45,6 +45,12 @@ def smithGGX(cosi, alpha):
 
 
 @ti.func
+def smithGTR2(cosi, alpha):
+    tani2 = (1 - cosi**2) / cosi**2
+    return 2 / (1 + ti.sqrt(1 + alpha**2 * tani2))
+
+
+@ti.func
 def sample_GTR1(u, v, alpha):
     u = ti.sqrt(alpha**(2 - 2 * u) - 1) / (alpha**2 - 1)
     return spherical(u, v)
@@ -54,3 +60,26 @@ def sample_GTR1(u, v, alpha):
 def sample_GTR2(u, v, alpha):
     u = ti.sqrt((1 - u) / (1 - u * (1 - alpha**2)))
     return spherical(u, v)
+
+
+# https://github.com/AirGuanZ/Atrc/blob/6a6c84c265261be0ac62ad8783a62cd9257549c1/src/tracer/src/core/material/utility/microfacet.cpp#L104
+@ti.func
+def sample_GTR2_vnor(ve, u, v, alpha):
+    vh = V23(alpha * ve.xy, ve.z).normalized()
+    lensq = vh.xy.norm_sqr()
+    t1 = V(1.0, 0.0, 0.0)
+    if lensq > eps:
+        t1 = V(-vh.y, vh.x, 0.0) / ti.sqrt(lensq)
+    t2 = vh.cross(t1)
+
+    r = ti.sqrt(u)
+    phi = ti.tau * v
+    t_1 = r * ti.cos(phi)
+    _t_2 = r * ti.sin(phi)
+    s = 0.5 * (1 + vh.z)
+    t_2 = (1 - s) * ti.sqrt(1 - t_1**2) + s * _t_2
+
+    nh = t_1 * t1 + t_2 * t2 + ti.sqrt(max(0, 1 - t_1**2 - t_2**2)) * vh
+    ne = V23(alpha * nh, max(0, nh.z)).normalized()
+
+    return ne

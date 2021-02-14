@@ -19,8 +19,8 @@ LightPool().pos[0] = V(0, 40, 0)
 LightPool().radius[0] = 0.4
 LightPool().count[None] = 1
 
-vertices, mtlids, materials = readgltf('assets/cornell.gltf')
-#vertices, mtlids, materials = readgltf('/tmp/untitled.gltf')
+#vertices, mtlids, materials = readgltf('assets/cornell.gltf')
+vertices, mtlids, materials = readgltf('/tmp/untitled.gltf')
 ModelPool().load(vertices, mtlids)
 MaterialPool().load(materials)
 

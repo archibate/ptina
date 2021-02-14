@@ -183,7 +183,7 @@ class Disney(namespace):
                     Gs = smithGGX(cosi, alpha) * smithGGX(coso, alpha)
 
                     result.outdir = outdir
-                    partial = Gs * 4 * cosi * coso
+                    partial = Gs * 2 * coso * lerp(alpha, 2 * cosi, 1.0)
                     result.pdf = Ds * Vavg(Fs) * partial
                     result.color = Fs * partial \
                             * (1 - self.transmission) / choice.pdf
