@@ -151,26 +151,25 @@ class Disney(namespace):
             if cosoh > 0 and coso > 0:
                 Ds = GTR2(cosh, alpha)
 
-                if self.transmission != 0:
-                    if choice(self.transmission):
-                        fdf = dielectricFresnel(etao, etai, cosoh)
-                        reflrate = lerp(fdf, 0.2, 1.0)
+                if choice(self.transmission):
+                    fdf = dielectricFresnel(etao, etai, cosoh)
+                    reflrate = lerp(fdf, 0.2, 1.0)
 
-                        if choice(reflrate):
+                    if choice(reflrate):
+                        result.outdir = outdir
+                        result.pdf = Ds * fdf
+                        result.color = self.basecolor * \
+                                fdf * self.transmission / choice.pdf
+                        result.impo = 1
+
+                    else:
+                        has_r, outdir = refract(-indir, halfdir, eta)
+                        if has_r:
                             result.outdir = outdir
-                            result.pdf = Ds * fdf
-                            result.color = self.basecolor * \
-                                    fdf * self.transmission / choice.pdf
+                            result.pdf = Ds * (1 - fdf)
+                            result.color = self.basecolor * (1 - fdf) \
+                                    * self.transmission / choice.pdf
                             result.impo = 1
-
-                        else:
-                            has_r, outdir = refract(-indir, halfdir, eta)
-                            if has_r:
-                                result.outdir = outdir
-                                result.pdf = Ds * (1 - fdf)
-                                result.color = self.basecolor * (1 - fdf) \
-                                        * self.transmission / choice.pdf
-                                result.impo = 1
 
                 else:
                     Foh = schlickFresnel(cosoh)

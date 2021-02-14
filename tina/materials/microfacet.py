@@ -34,7 +34,7 @@ def GTR1(cosh, alpha):
 def GTR2(cosh, alpha):
     alpha2 = alpha**2
     t = 1 + (alpha2 - 1) * cosh**2
-    return alpha2 / (ti.pi * t * t)
+    return alpha2 / (ti.pi * t**2)
 
 
 @ti.func
