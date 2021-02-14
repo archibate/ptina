@@ -71,9 +71,13 @@ class ImagePool(metaclass=Singleton):
     def new(self, nx, ny):
         id = self.idman.malloc()
         base = self.mman.malloc(nx * ny)
-        self.nx[id] = nx
-        self.ny[id] = ny
-        self.base[id] = base
+
+        @ti.materialize_callback
+        def _():
+            self.nx[id] = nx
+            self.ny[id] = ny
+            self.base[id] = base
+
         return id
 
     def delete(self, id):
@@ -96,7 +100,11 @@ class ImagePool(metaclass=Singleton):
             arr = np.concatenate([arr, np.ones((nx, ny, 1))], axis=2)
 
         id = self.new(nx, ny)
-        self.from_numpy(id, arr)
+
+        @ti.materialize_callback
+        def _():
+            self.from_numpy(id, arr)
+
         return id
 
 

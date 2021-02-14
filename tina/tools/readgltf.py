@@ -113,7 +113,19 @@ def readgltf(path):
             bt = images[bt.index]
         if mrt is not None:
             mrt = images[mrt.index]
-        return b, bt, m, r, mrt
+            mt = mrt[:, :, 2]
+            rt = mrt[:, :, 1]
+        else:
+            mt = rt = None
+        if r is None:
+            r = 1.0
+        if m is None:
+            m = 1.0
+        if b is None:
+            b = [1.0] * 3
+        else:
+            b = b[:3]
+        return b, bt, m, mt, r, rt
 
 
     for material in model.materials:
