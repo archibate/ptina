@@ -1,16 +1,15 @@
 import numpy as np
 import timeit
-import numba
-from sobol_data import get_poly, get_vgrid
 
 
-POLY = get_poly()
-V_TMPL = get_vgrid()
+data = np.load('/tmp/sobol.npy')
+POLY = data[:, 0]
+V_TMPL = data[:, 1:]
 DIM, LOG = V_TMPL.shape[:2]
-print(DIM, LOG)
+print(f'[TinaRNG] Sobol data size: DIM={DIM}, LOG={LOG}')
 
 
-N1 = 0xfffffffe
+N2 = 0xfffffffe
 
 
 def GetHighestBitPos(n):
@@ -25,7 +24,7 @@ def GetHighestBitPos(n):
 def GetLowestBitPos(n):
     # Returns the position of the low 0 bit base 2 in an integer.
     bit = 1
-    while n != (n & N1):
+    while n != (n & N2):
         bit += 1
         n >>= 1
     return bit
@@ -45,7 +44,7 @@ def GenVG(dim):
 
         l = POLY[i - 1]
         for k in range(m, 0, -1):
-            inc[k - 1] = l != (l & N1)
+            inc[k - 1] = l != (l & N2)
             l >>= 1
 
         for j in range(m + 1, LOG + 1):
@@ -100,6 +99,40 @@ class Sobol:
             print('invalid sample encountered!')
         return self.last_sample
 
+    def nextFloat(self):
+        return (self.next() + 0.5) / self.nsamples
+
+
+from tina.common import *
+
+
+@ti.data_oriented
+class SobolRNG(metaclass=Singleton):
+    def __init__(self, xdim, ydim, nsamples=8192, skip=173, jitter=False):
+        dim = xdim * ydim
+        self.nsamples = nsamples
+        self.core = Sobol(dim, nsamples, skip)
+        self.data = ti.field(int, dim)
+        self.xdim = xdim
+        self.ydim = ydim
+        self.jitter = jitter
+
+    def next(self):
+        x = self.core.next()
+        self.data.from_numpy(x)
+
+    @ti.func
+    def get(self, x, y):
+        x = x % self.xdim
+        y = y % self.ydim
+        val = self.data[x * self.ydim + y] / self.nsamples
+        if ti.static(self.jitter):
+            return val + ti.random() / self.nsamples
+        else:
+            return val
+
 
 n = 1024
-rng = Sobol(1111, 1024, 173)
+rng = Sobol(dim=1024, nsamples=8192, skip=0)
+print(np.average(np.stack([rng.nextFloat() for i in range(512)])))
+print(timeit.timeit(lambda: rng.next(), number=1000), 'ms')

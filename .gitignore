@@ -2,4 +2,5 @@
 /build
 /assets
 __pycache__
-/sobol_data
+/sobol*
+/tags
