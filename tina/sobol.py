@@ -98,7 +98,7 @@ def binaryreverse(i):
 
 @ti.data_oriented
 class TaichiSobol:
-    def __init__(self, xdim, ydim, nsamples=8192, skip=1):
+    def __init__(self, xdim, ydim, nsamples=8192, skip=17):
         self.dim = xdim * ydim
         self.nsamples = nsamples
         self.xdim = xdim
@@ -117,7 +117,7 @@ class TaichiSobol:
         self.data.from_numpy(arr)
 
     @ti.func
-    def get(self, x, y):
+    def calc(self, x, y):
         x = x % self.xdim
         y = y % self.ydim
         return self.data[x * self.ydim + y]
@@ -134,7 +134,7 @@ class TaichiSobol:
 
         @ti.func
         def random(self):
-            ret = self.sobol.get(self.x, self.y)
+            ret = self.sobol.calc(self.x, self.y)
             self.y += 1
             return ret
 
@@ -153,7 +153,7 @@ if __name__ == '__main__':
         for i, j in ti.ndrange(n, n):
             so = sobol1.get_proxy(wanghash2(i, j))
             img1[i, j] += so.random()
-            img2[i, j] += sobol2.get(i, j)
+            img2[i, j] += sobol2.calc(i, j)
             img3[i, j] += ti.random()
 
 

@@ -6,6 +6,7 @@ from tina.materials import *
 from tina.acceltree import *
 from tina.mtllib import *
 from tina.stack import *
+from tina.sobol import *
 
 
 @ti.func
@@ -21,13 +22,28 @@ class PathEngine(metaclass=Singleton):
         self.bgm = Image.load('assets/env.png')
         self.tex = Image.load('assets/cloth.jpg')
 
+        #self.sobol = None
+        nsamples = 32  # 2 + 3 * 10
+        self.sobol = TaichiSobol(21201 // nsamples, nsamples)
+
         nx, ny = 512, 512
         self.film = Image.new(nx, ny)
         self.normal = Image.new(nx, ny)
         self.albedo = Image.new(nx, ny)
 
+    def get_rng(self, i, j):
+        if ti.static(self.sobol):
+            return self.sobol.get_proxy(wanghash2(i, j))
+        else:
+            return ti
+
+    def render(self):
+        if ti.static(self.sobol):
+            self.sobol.update()
+        self._render()
+
     @ti.func
-    def trace(self, r):
+    def trace(self, r, rng):
         avoid = -1
         depth = 0
         result = V3(0.0)
@@ -35,7 +51,7 @@ class PathEngine(metaclass=Singleton):
         throughput = V3(1.0)
         last_brdf_pdf = 0.0
 
-        while depth < 4 and Vany(throughput > eps) and importance > eps:
+        while depth < 5 and Vany(throughput > eps) and importance > eps:
             depth += 1
 
             r.d = r.d.normalized()
@@ -50,7 +66,7 @@ class PathEngine(metaclass=Singleton):
             '''
 
             if hit.hit == 0:
-                result += throughput# * self.bgm(*dir2tex(r.d)).xyz
+                result += throughput * self.bgm(*dir2tex(r.d)).xyz
                 break
 
             avoid = hit.index
@@ -61,7 +77,7 @@ class PathEngine(metaclass=Singleton):
                 normal = -normal
 
             '''
-            li = LightPool().sample(hitpos, random3())
+            li = LightPool().sample(hitpos, random3(rng))
             occ = BVHTree().intersect(Ray(hitpos, li.dir), avoid)
             if occ.hit == 0 or occ.depth > li.dis:
                 brdf_clr = material.brdf(normal, sign, -r.d, li.dir)
@@ -71,7 +87,7 @@ class PathEngine(metaclass=Singleton):
                 result += throughput * direct_li
             '''
 
-            brdf = material.bounce(normal, sign, -r.d, random3())
+            brdf = material.bounce(normal, sign, -r.d, random3(rng))
             importance *= brdf.impo
             throughput *= brdf.color
             r.o = hitpos
@@ -81,16 +97,17 @@ class PathEngine(metaclass=Singleton):
         return result, importance
 
     @ti.kernel
-    def render(self):
+    def _render(self):
         for i, j in ti.ndrange(self.film.nx, self.film.ny):
             Stack().set(i * self.film.nx + j)
+            rng = self.get_rng(i, j)
 
-            dx, dy = random2()
+            dx, dy = random2(rng)
             x = (i + dx) / self.film.nx * 2 - 1
             y = (j + dy) / self.film.ny * 2 - 1
             ray = Camera().generate(x, y)
 
-            clr, impo = self.trace(ray)
+            clr, impo = self.trace(ray, rng)
             self.film[i, j] += V34(clr, impo)
 
             Stack().unset()
@@ -117,7 +134,7 @@ class PathEngine(metaclass=Singleton):
             albedo = V3(0.0)
             normal = V3(0.0)
 
-            dx, dy = random2()
+            dx, dy = random2(ti)
             x = (i + dx) / self.film.nx * 2 - 1
             y = (j + dy) / self.film.ny * 2 - 1
             ray = Camera().generate(x, y)

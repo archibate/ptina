@@ -13,9 +13,10 @@ hasattr(ti, '_tinahacked') or setattr(ti, '_tinahacked', 1) or setattr(ti,
         'tau', __import__('math').tau) or setattr(ti, 'materialize_callback',
         (lambda f: lambda x: [(x() if ti.get_runtime().materialized else f(x)),
         x][1])(ti.materialize_callback)) or setattr(ti, 'expr_init', (lambda f:
-        lambda x: x if isinstance(x, dict) else f(x))(ti.expr_init)) or setattr(
-        ti, 'expr_init_func', (lambda f: lambda x: x if isinstance(x, dict)
-        else f(x))(ti.expr_init_func)) or print('[Tina] Taichi properties hacked')
+        lambda x: x if isinstance(x, dict) or x is ti else f(x))(ti.expr_init)
+        ) or setattr(ti, 'expr_init_func', (lambda f: lambda x: x if isinstance
+        (x, dict) or x is ti else f(x))(ti.expr_init_func)
+        ) or print('[Tina] Taichi properties hacked')
 
 
 @eval('lambda x: x()')
