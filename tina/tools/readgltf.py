@@ -5,6 +5,7 @@ try:
     from gltflib import *
 except ImportError:
     please_install('gltflib')
+import os.path
 
 
 def readgltf(path):
@@ -27,6 +28,8 @@ def readgltf(path):
             data = uri[index + len('base64,'):]
             data = b64decode(data.encode('ascii'))
         else:
+            if not os.path.isabs(uri):
+                uri = os.path.join(os.path.dirname(path), uri)
             print('[TinaGLTF] reading file', uri)
             with open(uri, 'rb') as f:
                 data = f.read()
@@ -67,6 +70,9 @@ def readgltf(path):
             'VEC2': '2',
             'VEC3': '3',
             'VEC4': '4',
+            'MAT2': '4',
+            'MAT3': '9',
+            'MAT4': '16',
         }
 
         buffer = bufferViews[accessor.bufferView]
@@ -225,5 +231,6 @@ def readgltf(path):
 
 if __name__ == '__main__':
     vertices, mtlids, materials = readgltf('assets/cornell.gltf')
+    #vertices, mtlids, materials = readgltf('/tmp/luxball2.gltf')
     print(vertices.shape)
     print(mtlids.shape)

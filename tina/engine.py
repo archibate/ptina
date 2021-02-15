@@ -22,8 +22,8 @@ class PathEngine(metaclass=Singleton):
         self.bgm = Image.load('assets/env.png')
         self.tex = Image.load('assets/cloth.jpg')
 
-        #self.sobol = None
-        self.sobol = TaichiSobol()
+        self.sobol = None
+        #self.sobol = TaichiSobol()
 
         nx, ny = 512, 512
         self.film = Image.new(nx, ny)
