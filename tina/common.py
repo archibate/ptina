@@ -392,13 +392,13 @@ def ranprint(*args, rate=1e-3):
 
 
 @ti.func
-def random2():
-    return V(ti.random(), ti.random())
+def random2(rng=ti):
+    return V(rng.random(), rng.random())
 
 
 @ti.func
-def random3():
-    return V(ti.random(), ti.random(), ti.random())
+def random3(rng=ti):
+    return V(rng.random(), rng.random(), rng.random())
 
 
 def clamp_unsigned(x):
