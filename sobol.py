@@ -25,7 +25,7 @@ def GetHighestBitPos(n):
 def GetLowestBitPos(n):
     # Returns the position of the low 0 bit base 2 in an integer.
     bit = 1
-    while n != (n & N2):
+    while n & 1:
         bit += 1
         n >>= 1
     return bit
@@ -45,7 +45,7 @@ def GenVG(dim):
 
         l = POLY[i - 1]
         for k in range(m, 0, -1):
-            inc[k - 1] = l != (l & N2)
+            inc[k - 1] = l & 1
             l >>= 1
 
         for j in range(m + 1, LOG + 1):
@@ -108,17 +108,11 @@ class Sobol:
         return (self.next() + 0.5) / self.nsamples
 
 
-'''
+#'''
 rng = Sobol(32, 1024, 173)
-N = 128
-acc = rng.next()
-for i in range(N - 1):
-    acc += rng.next()
-acc = acc / rng.nsamples / N - 0.5
-print(acc.min(), acc.max())
-print(acc)
+print(rng.next())
 exit(1)
-'''
+#'''
 
 
 from tina.common import *
