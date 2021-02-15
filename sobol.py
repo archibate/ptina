@@ -10,6 +10,7 @@ print(f'[TinaRNG] Sobol data size: DIM={DIM}, LOG={LOG}')
 
 
 N2 = 0xfffffffe
+#N2 = 0xffffffff & -(1 << (31 - LOG))
 
 
 def GetHighestBitPos(n):
@@ -57,16 +58,20 @@ def GenVG(dim):
             vg[i - 1, j - 1] = newv
 
     l = 1
-    for j in range(LOG, 0, -1):
+    for j in range(LOG - 1, 0, -1):
+        l <<= 1
         for k in range(dim):
             vg[k, j - 1] *= l
-        l <<= 1
 
+    print(vg)
     return vg
 
 
 class Sobol:
     def __init__(self, dim, nsamples, skip):
+        assert dim <= DIM, dim
+        assert nsamples <= 2**LOG, nsamples
+
         self.dim = dim
         self.nsamples = nsamples
         self.vg = GenVG(self.dim)
@@ -103,36 +108,77 @@ class Sobol:
         return (self.next() + 0.5) / self.nsamples
 
 
+'''
+rng = Sobol(32, 1024, 173)
+N = 128
+acc = rng.next()
+for i in range(N - 1):
+    acc += rng.next()
+acc = acc / rng.nsamples / N - 0.5
+print(acc.min(), acc.max())
+print(acc)
+exit(1)
+'''
+
+
 from tina.common import *
 
 
 @ti.data_oriented
 class SobolRNG(metaclass=Singleton):
-    def __init__(self, xdim, ydim, nsamples=8192, skip=173, jitter=False):
-        dim = xdim * ydim
+    def __init__(self, xdim, ydim, zdim, nsamples=8192, skip=173, jitter=False):
+        dim = xdim * ydim * zdim
         self.nsamples = nsamples
         self.core = Sobol(dim, nsamples, skip)
         self.data = ti.field(int, dim)
         self.xdim = xdim
         self.ydim = ydim
+        self.zdim = zdim
         self.jitter = jitter
 
-    def next(self):
-        x = self.core.next()
-        self.data.from_numpy(x)
+    def generate(self):
+        arr = self.core.next()
+        self.data.from_numpy(arr)
 
     @ti.func
-    def get(self, x, y):
+    def get(self, x, y, z):
         x = x % self.xdim
         y = y % self.ydim
-        val = self.data[x * self.ydim + y] / self.nsamples
+        z = z % self.zdim
+        val = self.data[(x * self.ydim + y) * self.zdim + z]
         if ti.static(self.jitter):
-            return val + ti.random() / self.nsamples
+            return (val + ti.random()) / self.nsamples
         else:
-            return val
+            return (val + 0.5) / self.nsamples
+
+    @ti.func
+    def get3(self, x, y):
+        u = self.get(x, y, 0)
+        v = self.get(x, y, 1)
+        w = self.get(x, y, 2)
+        return V(u, v, w)
 
 
-n = 1024
-rng = Sobol(dim=1024, nsamples=8192, skip=0)
-print(np.average(np.stack([rng.nextFloat() for i in range(512)])))
-print(timeit.timeit(lambda: rng.next(), number=1000), 'ms')
+rng = SobolRNG(32, 32, 1)
+img1 = ti.field(float, (32, 32))
+img2 = ti.field(float, (32, 32))
+
+
+@ti.kernel
+def render_image():
+    for i, j in ti.ndrange(32, 32):
+        img1[i, j] += rng.get(i, j, 0)
+        img2[i, j] += ti.random()
+
+
+gui1 = ti.GUI('sobol')
+gui2 = ti.GUI('pseudo')
+gui1.fps_limit = 10
+gui2.fps_limit = 10
+while gui1.running and gui2.running:
+    rng.generate()
+    render_image()
+    gui1.set_image(ti.imresize(img1.to_numpy() / (1 + gui1.frame), 512))
+    gui2.set_image(ti.imresize(img2.to_numpy() / (1 + gui2.frame), 512))
+    gui1.show()
+    gui2.show()
