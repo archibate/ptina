@@ -62,6 +62,24 @@ class ImagePool(metaclass=Singleton):
         return arr
 
     @ti.kernel
+    def _fast_export_image(self, id: int, out: ti.ext_arr(), blocksize: int):
+        shape = V(self.nx[id], self.ny[id])
+        if blocksize != 0:
+            shape //= blocksize
+        for x, y in ti.ndrange(shape.x, shape.y):
+            base = (y * shape.x + x) * 3
+            I = V(x, y)
+            val = self[id, x, y]
+            if val.w != 0:
+                val.xyz /= val.w
+            else:
+                val.xyz = V(0.9, 0.4, 0.9)
+            r, g, b = val.xyz
+            out[base + 0] = r
+            out[base + 1] = g
+            out[base + 2] = b
+
+    @ti.kernel
     def from_numpy(self, id: int, arr: ti.ext_arr()):
         nx, ny = self.nx[id], self.ny[id]
         for x, y in ti.ndrange(nx, ny):
@@ -146,6 +164,9 @@ class Image:
 
     def to_numpy_normalized(self, tonemap=None):
         return ImagePool().to_numpy_normalized(self.id, tonemap)
+
+    def _fast_export_image(self, out, blocksize):
+        return ImagePool()._fast_export_image(self.id, out, blocksize)
 
     def from_numpy(self, arr):
         return ImagePool().from_numpy(self.id, arr)

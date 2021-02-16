@@ -167,7 +167,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
                 if object.type == 'MESH':
                     self.__add_mesh_object(object, depsgraph)
 
-        self.__on_update()
+        self.__on_update(depsgraph)
 
     def __update_scene(self, depsgraph):
         self.update_stats('Initializing', 'Updating scene')
@@ -193,18 +193,18 @@ class TinaRenderEngine(bpy.types.RenderEngine):
                     need_update = True
 
         if need_update:
-            self.__on_update()
+            self.__on_update(depsgraph)
 
-    def __on_update(self):
+    def __on_update(self, depsgraph):
         primitives = []
         for world, verts, norms, coors, mtlid in self.object_to_mesh.values():
             primitives.append((verts, norms, coors, world, mtlid))
         vertices, mtlids = compose_multiple_meshes(primitives)
 
         ModelPool().load(vertices, mtlids)
-
         self.update_stats('Initializing', 'Constructing tree')
         BVHTree().build()
+
         self.__reset_samples(depsgraph.scene)
 
     def __reset_samples(self, scene):
@@ -353,7 +353,7 @@ class TinaDrawData:
         self.perspective = perspective
         width, height = dimensions
 
-        resx, resy = scene.res
+        resx, resy = PathEngine().film.nx, PathEngine().film.ny
         if blocksize != 0:
             resx //= blocksize
             resy //= blocksize
@@ -469,6 +469,7 @@ def register():
     for panel in get_panels():
         panel.COMPAT_ENGINES.add('TINA')
 
+    ti.init(ti.cuda)
     init_things()
 
 
