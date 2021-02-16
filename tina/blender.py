@@ -2,6 +2,7 @@ import bpy
 import bgl
 
 from tina.things import *
+from tina.multimesh import compose_multiple_meshes
 
 
 def calc_camera_matrices(depsgraph):
@@ -146,7 +147,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
     def __del__(self):
         pass
 
-    def __setup_mesh_object(self, object, depsgraph):
+    def __add_mesh_object(self, object, depsgraph):
         print('adding mesh object', object.name, object.tina_material)
 
         verts, norms, coors = blender_get_object_mesh(object, depsgraph)
@@ -155,25 +156,26 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         mtlid = -1
         self.object_to_mesh[object] = world, verts, norms, coors, mtlid
 
-    def __update_mesh_object(self, object, depsgraph):
-        return self.__setup_mesh_object(object, depsgraph)
-
     def __setup_scene(self, depsgraph):
+        self.update_stats('Initializing', 'Loading scene')
+
         scene = depsgraph.scene
         options = scene.tina_render
 
         for object in depsgraph.ids:
             if isinstance(object, bpy.types.Object):
                 if object.type == 'MESH':
-                    self.__setup_mesh_object(object, depsgraph)
+                    self.__add_mesh_object(object, depsgraph)
 
-        for world, verts, norms, coors, mtlid in self.object_to_mesh.values():
-            MultiMeshPool().add(world, verts, norms, coors, mtlid)
+        self.__on_update()
 
     def __update_scene(self, depsgraph):
+        self.update_stats('Initializing', 'Updating scene')
+
         need_update = False
         for update in depsgraph.updates:
             object = update.id
+
             if isinstance(object, bpy.types.Scene):
                 obj_to_del = []
                 for obj in self.object_to_mesh:
@@ -184,16 +186,26 @@ class TinaRenderEngine(bpy.types.RenderEngine):
                 for obj in obj_to_del:
                     del self.object_to_mesh[obj]
                     need_update = True
+
             if isinstance(object, bpy.types.Object):
                 if object.type == 'MESH':
-                    self.__update_mesh_object(object, depsgraph)
+                    self.__add_mesh_object(object, depsgraph)
                     need_update = True
+
         if need_update:
-            MultiMeshPool().clear()
-            for world, verts, norms, coors, mtlid in self.object_to_mesh.values():
-                MultiMeshPool().add(world, verts, norms, coors, mtlid)
-            BVHTree().build()
-            self.__reset_samples(depsgraph.scene)
+            self.__on_update()
+
+    def __on_update():
+        primitives = []
+        for world, verts, norms, coors, mtlid in self.object_to_mesh.values():
+            primitives.append((verts, norms, coors, world, mtlid))
+        vertices, mtlids = compose_multiple_meshes(primitives)
+
+        ModelPool().load(vertices, mtlids)
+
+        self.update_stats('Initializing', 'Constructing tree')
+        BVHTree().build()
+        self.__reset_samples(depsgraph.scene)
 
     def __reset_samples(self, scene):
         self.nsamples = 0
@@ -208,7 +220,8 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         self.size_y = int(scene.render.resolution_y * scale)
         view, proj = calc_camera_matrices(depsgraph)
 
-        self.__setup(depsgraph, proj @ view)
+        self.__setup_scene(depsgraph)
+        self.__update_camera(perspective)
 
         # Here we write the pixel values to the RenderResult
         result = self.begin_result(0, 0, self.size_x, self.size_y)
@@ -232,14 +245,6 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             self.update_progress(1.0)
 
         self.end_result(result)
-
-    def __setup(self, depsgraph, perspective):
-        self.update_stats('Initializing', 'Loading scene')
-        self.__setup_scene(depsgraph)
-
-        self.update_stats('Initializing', 'Constructing tree')
-        BVHTree().build()
-        self.__update_camera(perspective)
 
     def __update_camera(self, perspective):
         Camera().set_perspective(np.array(perspective))
@@ -268,7 +273,8 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
             # Loop over all datablocks used in the scene.
             print('setup scene')
-            self.__setup(depsgraph, perspective)
+            self.__setup_scene(depsgraph)
+            self.__update_camera(perspective)
         else:
             first_time = False
 
@@ -462,6 +468,8 @@ def register():
 
     for panel in get_panels():
         panel.COMPAT_ENGINES.add('TINA')
+
+    init_things()
 
 
 def unregister():
