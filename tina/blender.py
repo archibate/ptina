@@ -137,7 +137,6 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         self.draw_data = None
 
         self.object_to_mesh = {}
-        self.material_to_id = {}
         self.nblocks = 0
         self.nsamples = 0
         self.viewport_samples = 16
@@ -148,7 +147,16 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         pass
 
     def __add_mesh_object(self, object, depsgraph):
-        print('adding mesh object', object.name, object.tina_material)
+        print('adding mesh object', object.name)
+
+        verts, norms, coors = blender_get_object_mesh(object, depsgraph)
+        world = np.array(object.matrix_world)
+
+        mtlid = -1
+        self.object_to_mesh[object] = world, verts, norms, coors, mtlid
+
+    def __add_light_object(self, object, depsgraph):
+        print('adding light object', object.name)
 
         verts, norms, coors = blender_get_object_mesh(object, depsgraph)
         world = np.array(object.matrix_world)
@@ -166,6 +174,8 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             if isinstance(object, bpy.types.Object):
                 if object.type == 'MESH':
                     self.__add_mesh_object(object, depsgraph)
+                elif object.type == 'LIGHT':
+                    self.__add_light_object(object, depsgraph)
 
         self.__on_update(depsgraph)
 
@@ -188,6 +198,9 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             if isinstance(object, bpy.types.Object):
                 if object.type == 'MESH':
                     self.__add_mesh_object(object, depsgraph)
+                    need_update = True
+                elif object.type == 'LIGHT':
+                    self.__add_light_object(object, depsgraph)
                     need_update = True
 
         if need_update:
@@ -455,11 +468,9 @@ class TinaRenderProperties(bpy.types.PropertyGroup):
 def register():
     bpy.utils.register_class(TinaRenderProperties)
 
-    bpy.types.Object.tina_material = bpy.props.StringProperty(name='Material')
     bpy.types.Light.tina_color = bpy.props.FloatVectorProperty(name='Color', subtype='COLOR', min=0, max=1, default=(1, 1, 1))
     bpy.types.Light.tina_strength = bpy.props.FloatProperty(name='Strength', min=0, default=16)
     bpy.types.World.tina_color = bpy.props.FloatVectorProperty(name='Color', subtype='COLOR', min=0, max=1, default=(0.04, 0.04, 0.04))
-    bpy.types.World.tina_strength = bpy.props.FloatProperty(name='Strength', min=0, default=1)
     bpy.types.World.tina_strength = bpy.props.FloatProperty(name='Strength', min=0, default=1)
     bpy.types.Scene.tina_render = bpy.props.PointerProperty(name='tina', type=TinaRenderProperties)
 

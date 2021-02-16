@@ -6,7 +6,7 @@ from tina.materials import *
 from tina.acceltree import *
 from tina.mtllib import *
 from tina.stack import *
-from tina.sobol import *
+#from tina.sobol import *
 
 
 @ti.func
@@ -64,7 +64,7 @@ class PathEngine(metaclass=Singleton):
             #'''
 
             if hit.hit == 0:
-                #result += throughput * self.bgm(*dir2tex(r.d)).xyz
+                result += throughput * 0.04#self.bgm(*dir2tex(r.d)).xyz
                 break
 
             avoid = hit.index
