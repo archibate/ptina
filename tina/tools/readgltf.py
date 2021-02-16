@@ -199,6 +199,9 @@ def readgltf(path):
         if t is None:
             t = np.zeros((p.shape[0], 2))
 
+        if m is None:
+            m = -1
+
         p = p.astype(np.float64)[f]
         n = n.astype(np.float64)[f]
         t = t.astype(np.float64)[f]

@@ -22,10 +22,12 @@ class ParameterPair:
     
     @ti.func
     def get(self, mtlid, texcoord):
-        fac = self.fac[mtlid]
-        texid = self.tex[mtlid]
-        if texid != -1:
-            fac *= Image(texid)(*texcoord)
+        fac = V4(1.0)
+        if mtlid != -1:
+            fac = self.fac[mtlid]
+            texid = self.tex[mtlid]
+            if texid != -1:
+                fac *= Image(texid)(*texcoord)
         return fac
 
 
