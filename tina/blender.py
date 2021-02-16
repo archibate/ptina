@@ -195,7 +195,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         if need_update:
             self.__on_update()
 
-    def __on_update():
+    def __on_update(self):
         primitives = []
         for world, verts, norms, coors, mtlid in self.object_to_mesh.values():
             primitives.append((verts, norms, coors, world, mtlid))

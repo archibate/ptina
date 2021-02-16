@@ -15,13 +15,18 @@ def compose_multiple_meshes(primitives):
         assert w is not None
         assert p is not None
         assert n is not None
-        assert f is not None
 
         if t is None:
             t = np.zeros((p.shape[0], 2))
 
         if m is None:
             m = -1
+
+        p = p.reshape(p.shape[0] * 3, 3)
+        n = n.reshape(n.shape[0] * 3, 3)
+        t = t.reshape(t.shape[0] * 3, 2)
+
+        assert p.shape[0] == n.shape[0] == t.shape[0]
 
         p = p.astype(np.float64)
         n = n.astype(np.float64)
@@ -39,15 +44,16 @@ def compose_multiple_meshes(primitives):
 
     vertices = []
     mtlids = []
-    for p, n, t, w, f, m in primitives:
+    for p, n, t, w, m in primitives:
         a, m = transform_primitive(p, n, t, w, m)
         vertices.append(a)
         mtlids.append(m)
     assert len(vertices) and len(mtlids)
-    assert len(vertices) == len(mtlids) * 3
 
     vertices = np.concatenate(vertices, axis=0)
     mtlids = np.concatenate(mtlids, axis=0)
+
+    assert len(vertices) == len(mtlids) * 3
 
     print('[Tina] loaded', len(mtlids), 'triangles')
 
