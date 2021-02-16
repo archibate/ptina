@@ -22,8 +22,8 @@ registered = False
 
 def register():
     print('Tina-Dev register...')
-    import tina_blend
-    tina_blend.register()
+    import tina
+    tina.register()
 
     global registered
     registered = True
@@ -32,8 +32,8 @@ def register():
 
 def unregister():
     print('Tina-Dev unregister...')
-    import tina_blend
-    tina_blend.unregister()
+    import tina
+    tina.unregister()
 
     global registered
     registered = False
@@ -41,37 +41,18 @@ def unregister():
 
 
 def reload_addon():
-    def reload_package(package):
-        import os
-        import types
-        import importlib
-
-        assert(hasattr(package, "__package__"))
-        fn = package.__file__
-        fn_dir = os.path.dirname(fn) + os.sep
-        module_visit = {fn}
-        del fn
-
-        def reload_recursive_ex(module):
-            importlib.reload(module)
-            for module_child in dict(vars(module)).values():
-                if isinstance(module_child, types.ModuleType):
-                    fn_child = getattr(module_child, "__file__", None)
-                    if (fn_child is not None) and fn_child.startswith(fn_dir):
-                        if fn_child not in module_visit:
-                            # print("reloading:", fn_child, "from", module)
-                            module_visit.add(fn_child)
-                            reload_recursive_ex(module_child)
-
-        reload_recursive_ex(package)
-
-    import tina
-    import tina_blend
     if registered:
-        tina_blend.unregister()
-    reload_package(tina)
-    reload_package(tina_blend)
-    tina_blend.register()
+        import tina
+        tina.unregister()
+        del tina
+    mods_to_del = []
+    for k in sys.modules:
+        if k.startswith('tina.') or k == 'tina':
+            mods_to_del.append(k)
+    for k in mods_to_del:
+        sys.modules.pop(k)
+    import tina
+    tina.register()
 
 
 @eval('lambda x: x()')

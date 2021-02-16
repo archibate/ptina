@@ -11,20 +11,12 @@ bl_info = {
         'category': 'Render',
 }
 
-import tina
-
-
-from . import render_engine
-
-
-submodules = [render_engine]
-
 
 def register():
-    for mod in submodules:
-        mod.register()
+    from . import blender
+    return blender.register()
 
 
 def unregister():
-    for mod in reversed(submodules):
-        mod.unregister()
+    from . import blender
+    return blender.unregister()
