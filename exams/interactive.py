@@ -1,5 +1,5 @@
 from tina.things import *
-from tina.tools.control import Control
+from tina.tools.control import CamControl
 from tina.tools.readgltf import readgltf
 
 
@@ -13,7 +13,7 @@ MaterialPool().load(materials)
 BVHTree().build()
 
 gui = ti.GUI()
-gui.control = Control(gui)
+gui.control = CamControl(gui)
 while gui.running:
     if gui.control.process_events():
         PathEngine().film.clear()

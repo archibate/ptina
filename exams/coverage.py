@@ -1,5 +1,4 @@
 from tina.things import *
-from tina.tools.control import Control
 from tina.tools.readgltf import readgltf
 
 
