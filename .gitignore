@@ -4,3 +4,4 @@
 __pycache__
 /sobol*
 /tags
+tina/sobol_data.py
