@@ -170,8 +170,6 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         self.__on_update(depsgraph)
 
     def __update_scene(self, depsgraph):
-        self.update_stats('Initializing', 'Updating scene')
-
         need_update = False
         for update in depsgraph.updates:
             object = update.id
@@ -193,6 +191,8 @@ class TinaRenderEngine(bpy.types.RenderEngine):
                     need_update = True
 
         if need_update:
+            self.update_stats('Initializing', 'Updating scene')
+
             self.__on_update(depsgraph)
 
     def __on_update(self, depsgraph):
@@ -329,10 +329,12 @@ class TinaRenderEngine(bpy.types.RenderEngine):
                 if self.nblocks == 1:
                     PathEngine().film.clear()
                 self.nsamples += 1
-            PathEngine().render()#blocksize=self.nblocks)
+
+            self.update_stats('Rendering', f'{self.nsamples}/{max_samples} Samples')
+
+            PathEngine().render(blocksize=self.nblocks)
             self.draw_data = TinaDrawData(dimensions, perspective,
                     self.nblocks)
-            self.update_stats('Rendering', f'{self.nsamples}/{max_samples} Samples')
 
             if self.nsamples < max_samples or self.nblocks != 0:
                 self.tag_redraw()
@@ -447,7 +449,7 @@ def get_panels():
 class TinaRenderProperties(bpy.types.PropertyGroup):
     render_samples: bpy.props.IntProperty(name='Render Samples', min=1, default=128)
     viewport_samples: bpy.props.IntProperty(name='Viewport Samples', min=1, default=32)
-    start_pixel_size: bpy.props.IntProperty(name='Start Pixel Size', min=1, default=8)
+    start_pixel_size: bpy.props.IntProperty(name='Start Pixel Size', min=1, default=1)
 
 
 def register():
