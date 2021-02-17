@@ -164,7 +164,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         color = np.array(object.data.color)
         color *= object.data.energy
         radius = max(object.data.shadow_soft_size, eps)
-        color /= 4 * ti.pi * radius**2
+        color /= 2 * np.pi * radius**2
         type = object.data.type
 
         self.object_to_light[object] = world, color, radius, type
@@ -355,8 +355,9 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         bgl.glBlendFunc(bgl.GL_ONE, bgl.GL_ONE_MINUS_SRC_ALPHA)
         self.bind_display_space_shader(scene)
 
-        if not self.draw_data or self.draw_data.dimensions != dimensions:
-            FilmTable().set_size(*dimensions)
+        if not self.draw_data or self.draw_data.dimensions != dimensions \
+                or self.nblocks != 0:
+            FilmTable().set_size(*V(*dimensions) // self.nblocks)
 
         if not self.draw_data or self.draw_data.dimensions != dimensions \
                 or self.draw_data.perspective != perspective:
@@ -374,9 +375,8 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
             self.update_stats('Rendering', f'{self.nsamples}/{max_samples} Samples')
 
-            PathEngine().render(blocksize=self.nblocks)
-            self.draw_data = TinaDrawData(dimensions, perspective,
-                    self.nblocks)
+            PathEngine().render(aa=(self.nblocks == 0))
+            self.draw_data = TinaDrawData(dimensions, perspective)
 
             if self.nsamples < max_samples or self.nblocks != 0:
                 self.tag_redraw()
@@ -390,7 +390,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
 
 class TinaDrawData:
-    def __init__(self, dimensions, perspective, blocksize):
+    def __init__(self, dimensions, perspective):
         print('redraw!')
         # Generate dummy float image buffer
         self.dimensions = dimensions
@@ -398,12 +398,9 @@ class TinaDrawData:
         width, height = dimensions
 
         resx, resy = FilmTable().nx, FilmTable().ny
-        if blocksize != 0:
-            resx //= blocksize
-            resy //= blocksize
 
         pixels = np.empty(resx * resy * 3, np.float32)
-        FilmTable().color._fast_export_image(pixels, blocksize)
+        FilmTable()._fast_export_image(0, pixels)
         self.pixels = bgl.Buffer(bgl.GL_FLOAT, resx * resy * 3, pixels)
 
         # Generate texture
@@ -491,7 +488,7 @@ def get_panels():
 class TinaRenderProperties(bpy.types.PropertyGroup):
     render_samples: bpy.props.IntProperty(name='Render Samples', min=1, default=128)
     viewport_samples: bpy.props.IntProperty(name='Viewport Samples', min=1, default=32)
-    start_pixel_size: bpy.props.IntProperty(name='Start Pixel Size', min=1, default=1, subtype='PIXEL')
+    start_pixel_size: bpy.props.IntProperty(name='Start Pixel Size', min=1, default=8, subtype='PIXEL')
 
 
 def register():

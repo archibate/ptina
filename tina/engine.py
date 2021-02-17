@@ -28,7 +28,7 @@ class PathEngine(metaclass=Singleton):
         else:
             return ti
 
-    def render(self, blocksize=0):
+    def render(self, aa=True):
         if ti.static(self.sobol):
             self.sobol.update()
         self._render()

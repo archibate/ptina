@@ -35,7 +35,7 @@ class FilmTable(metaclass=Singleton):
         return self.root[id, index]
 
     def set_size(self, nx, ny):
-        self.res[None] = nx, ny
+        self.res[None] = [nx, ny]
 
     def clear(self, id=0):
         self.root.fill(0)
