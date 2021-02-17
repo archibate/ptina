@@ -99,7 +99,7 @@ class PathEngine(metaclass=Singleton):
             ray = Camera().generate(x, y)
 
             clr, impo = self.trace(ray, rng)
-            FilmTable().color[i, j] += V34(clr, impo)
+            FilmTable()[0, i, j] += V34(clr, impo)
 
             Stack().unset()
 
@@ -135,7 +135,7 @@ class PathEngine(metaclass=Singleton):
                 hitpos, normal, sign, material = self.get_geometries(hit, ray)
                 albedo = V3(1.0)
 
-            FilmTable().albedo[i, j] += V34(albedo, 1.0)
-            FilmTable().normal[i, j] += V34(normal, 1.0)
+            FilmTable()[1, i, j] += V34(albedo, 1.0)
+            FilmTable()[2, i, j] += V34(normal, 1.0)
 
             Stack().unset()
