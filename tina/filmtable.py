@@ -41,7 +41,7 @@ class FilmTable(metaclass=Singleton):
         self.root.fill(0)
 
     def get_image(self, id=0):
-        arr = np.empty((self.nx, self.ny, 3), np.float32)
+        arr = np.empty((self.nx, self.ny, 4), np.float32)
         self._get_image(id, arr)
         return arr
 
@@ -52,10 +52,10 @@ class FilmTable(metaclass=Singleton):
             val = self[id, x, y]
             if val.w != 0:
                 val.xyz /= val.w
+                val.w = 1.0
             else:
-                val.xyz = V(0.9, 0.4, 0.9)
-            val = tonemap(val)
-            for k in ti.static(range(3)):
+                val = V(0.9, 0.4, 0.9, 0.0)
+            for k in ti.static(range(4)):
                 arr[x, y, k] = val[k]
 
     @ti.kernel

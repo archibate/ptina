@@ -187,7 +187,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
         if type == 'POINT':
             size = max(object.data.shadow_soft_size, 1e-6)
-            color /= 2 * np.pi * size**2
+            color /= 8 * np.pi * size**2
         elif type == 'AREA':
             assert object.data.shape == 'SQUARE'
             size = max(object.data.size, 1e-6)
@@ -280,6 +280,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
         self.__setup_scene(depsgraph)
         self.__update_camera(proj @ view)
+        worker.set_size(self.size_x, self.size_y)
 
         # Here we write the pixel values to the RenderResult
         result = self.begin_result(0, 0, self.size_x, self.size_y)
