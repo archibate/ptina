@@ -8,6 +8,5 @@ def init_things():
     ImagePool()
     ModelPool()
     LightPool()
-    ToneMapping()
     MaterialPool()
     FilmTable()

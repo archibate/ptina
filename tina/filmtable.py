@@ -40,13 +40,13 @@ class FilmTable(metaclass=Singleton):
     def clear(self, id=0):
         self.root.fill(0)
 
-    def to_numpy(self, id=0, tonemap=NoToneMap):
+    def to_numpy(self, id=0):
         arr = np.empty((self.nx, self.ny, 3), np.float32)
-        self._to_numpy(id, arr, tonemap)
+        self._to_numpy(id, arr)
         return arr
 
     @ti.kernel
-    def _to_numpy(self, id: int, arr: ti.ext_arr(), tonemap: ti.template()):
+    def _to_numpy(self, id: int, arr: ti.ext_arr()):
         nx, ny = self.res[None]
         for x, y in ti.ndrange(nx, ny):
             val = self[id, x, y]
@@ -58,11 +58,8 @@ class FilmTable(metaclass=Singleton):
             for k in ti.static(range(3)):
                 arr[x, y, k] = val[k]
 
-    def get_image(self, id=0, raw=False):
-        return self.to_numpy(id, ToneMapping() if not raw else None)
-
     @ti.kernel
-    def _fast_export_image(self, id: int, out: ti.ext_arr()):
+    def fast_export_image(self, id: int, out: ti.ext_arr()):
         shape = self.res[None]
         for x, y in ti.ndrange(shape.x, shape.y):
             base = (y * shape.x + x) * 3

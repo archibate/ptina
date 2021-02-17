@@ -36,46 +36,10 @@ class ImagePool(metaclass=Singleton):
             for k in ti.static(range(4)):
                 arr[x, y, k] = val[k]
 
-    @ti.kernel
-    def _to_numpy_normalized(self, id: int, arr: ti.ext_arr(), tonemap: ti.template()):
-        nx, ny = self.nx[id], self.ny[id]
-        for x, y in ti.ndrange(nx, ny):
-            val = self[id, x, y]
-            if val.w != 0:
-                val.xyz /= val.w
-            else:
-                val.xyz = V(0.9, 0.4, 0.9)
-            val = tonemap(val)
-            for k in ti.static(range(3)):
-                arr[x, y, k] = val[k]
-
     def to_numpy(self, id):
         arr = np.empty((self.nx[id], self.ny[id], 4), np.float32)
         self._to_numpy(id, arr)
         return arr
-
-    def to_numpy_normalized(self, id, tonemap=NoToneMap):
-        arr = np.empty((self.nx[id], self.ny[id], 3), np.float32)
-        self._to_numpy_normalized(id, arr, tonemap)
-        return arr
-
-    @ti.kernel
-    def _fast_export_image(self, id: int, out: ti.ext_arr(), blocksize: int):
-        shape = V(self.nx[id], self.ny[id])
-        if blocksize != 0:
-            shape //= blocksize
-        for x, y in ti.ndrange(shape.x, shape.y):
-            base = (y * shape.x + x) * 3
-            I = V(x, y)
-            val = self[id, x, y]
-            if val.w != 0:
-                val.xyz /= val.w
-            else:
-                val.xyz = V(0.9, 0.4, 0.9)
-            r, g, b = val.xyz
-            out[base + 0] = r
-            out[base + 1] = g
-            out[base + 2] = b
 
     @ti.kernel
     def from_numpy(self, id: int, arr: ti.ext_arr()):
@@ -160,17 +124,8 @@ class Image:
     def to_numpy(self):
         return ImagePool().to_numpy(self.id)
 
-    def to_numpy_normalized(self, tonemap=None):
-        return ImagePool().to_numpy_normalized(self.id, tonemap)
-
-    def _fast_export_image(self, out, blocksize):
-        return ImagePool()._fast_export_image(self.id, out, blocksize)
-
     def from_numpy(self, arr):
         return ImagePool().from_numpy(self.id, arr)
-
-    def get_image(self, raw=False):
-        return self.to_numpy_normalized(ToneMapping() if not raw else None)
 
     @ti.func
     def subscript(self, x, y):
@@ -185,23 +140,6 @@ class Image:
 
     def variable(self):
         return self
-
-
-@ti.data_oriented
-class ToneMapping(metaclass=Singleton):
-    def __init__(self):
-        self.exposure = ti.field(float, ())
-        self.gamma = ti.field(float, ())
-
-        @ti.materialize_callback
-        def init_tonemap():
-            self.exposure[None] = 0.3
-            self.gamma[None] = 1/2.2
-
-    @ti.func
-    def __call__(self, hdr):
-        rgb = self.exposure[None] * hdr
-        return pow(rgb / (rgb + 0.155) * 1.019, self.gamma[None])
 
 
 if __name__ == '__main__':
