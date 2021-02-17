@@ -1,9 +1,7 @@
+import functools
 import threading
 import queue
 import time
-
-
-q = queue.Queue()
 
 
 class DaemonThread(threading.Thread):
@@ -16,18 +14,53 @@ class DaemonThread(threading.Thread):
         self.func(*self.args)
 
 
-@DaemonThread
-def func():
-    while True:
-        func = q.get()
-        func()
-        q.task_done()
+class DaemonWorker:
+    def __init__(self):
+        self.queue = queue.Queue()
+        self.daemon = DaemonThread(self.daemon_main)
+        self.daemon.start()
+
+    def daemon_main(self):
+        while True:
+            func = self.queue.get()
+            func.retval = func()
+            self.queue.task_done()
+
+    def launch(self, func):
+        self.queue.put(func)
+        self.queue.join()
+        return func.retval
 
 
-func.start()
+class DaemonModule:
+    def __init__(self, getmodule):
+        self.worker = DaemonWorker()
 
-@q.put
-def _():
-    print('What the fuck')
+        @self.worker.launch
+        def _():
+            self.module = getmodule()
 
-q.join()
+    def __getattr__(self, name):
+        func = getattr(self.module, name)
+        if not callable(func):
+            return func
+
+        @functools.wraps(func)
+        def wrapped(*args, **kwargs):
+            @self.worker.launch
+            def retval():
+                return func(*args, **kwargs)
+
+            return retval
+
+        return wrapped
+
+
+@DaemonModule
+def a():
+    import a
+    return a
+
+
+a.hello()
+print('done', threading.current_thread())

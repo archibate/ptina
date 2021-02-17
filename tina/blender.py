@@ -521,7 +521,7 @@ def register():
 
     global worker
 
-    @mtworker.MTWorker
+    @mtworker.DaemonModule
     def worker():
         from tina import worker
         worker.init()
