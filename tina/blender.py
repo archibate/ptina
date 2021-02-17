@@ -2,7 +2,7 @@ import bpy
 import bgl
 
 from tina.things import *
-from tina.multimesh import compose_multiple_meshes
+from tina.multimesh import *
 
 
 def calc_camera_matrices(depsgraph):
@@ -83,8 +83,9 @@ class TinaLightPanel(bpy.types.Panel):
         object = context.object
 
         if object.type == 'LIGHT':
-            layout.prop(object.data, 'tina_color')
-            layout.prop(object.data, 'tina_strength')
+            layout.prop(object.data, 'color')
+            layout.prop(object.data, 'energy', text='Strength')
+            layout.prop(object.data, 'shadow_soft_size', text='Radius')
 
 
 class TinaWorldPanel(bpy.types.Panel):
@@ -137,6 +138,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         self.draw_data = None
 
         self.object_to_mesh = {}
+        self.object_to_light = {}
         self.nblocks = 0
         self.nsamples = 0
         self.viewport_samples = 16
@@ -158,11 +160,14 @@ class TinaRenderEngine(bpy.types.RenderEngine):
     def __add_light_object(self, object, depsgraph):
         print('adding light object', object.name)
 
-        verts, norms, coors = blender_get_object_mesh(object, depsgraph)
         world = np.array(object.matrix_world)
+        color = np.array(object.data.color)
+        color *= object.data.energy
+        color /= 4 * ti.pi * object.data.shadow_soft_size**2
+        radius = min(object.data.shadow_soft_size, eps)
+        type = object.data.type
 
-        mtlid = -1
-        self.object_to_mesh[object] = world, verts, norms, coors, mtlid
+        self.object_to_light[object] = world, color, radius, type
 
     def __setup_scene(self, depsgraph):
         self.update_stats('Initializing', 'Loading scene')
@@ -188,11 +193,19 @@ class TinaRenderEngine(bpy.types.RenderEngine):
                 obj_to_del = []
                 for obj in self.object_to_mesh:
                     if obj.name not in object.objects:
-                        # this object was deleted
-                        print('delete object', obj)
+                        print('removing mesh object', obj)
                         obj_to_del.append(obj)
                 for obj in obj_to_del:
                     del self.object_to_mesh[obj]
+                    need_update = True
+
+                obj_to_del = []
+                for obj in self.object_to_light:
+                    if obj.name not in object.objects:
+                        print('removing light object', obj)
+                        obj_to_del.append(obj)
+                for obj in obj_to_del:
+                    del self.object_to_light[obj]
                     need_update = True
 
             if isinstance(object, bpy.types.Object):
@@ -209,14 +222,27 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             self.__on_update(depsgraph)
 
     def __on_update(self, depsgraph):
-        primitives = []
+        meshes = []
         for world, verts, norms, coors, mtlid in self.object_to_mesh.values():
-            primitives.append((verts, norms, coors, world, mtlid))
-        vertices, mtlids = compose_multiple_meshes(primitives)
+            meshes.append((verts, norms, coors, world, mtlid))
+        vertices, mtlids = compose_multiple_meshes(meshes)
 
         ModelPool().load(vertices, mtlids)
         self.update_stats('Initializing', 'Constructing tree')
         BVHTree().build()
+
+        self.update_stats('Initializing', 'Updating lights')
+        lights = []
+        for i, (world, color, radius, type) in enumerate(self.object_to_light.values()):
+            if type == 'POINT':
+                pos = world @ np.array([0, 0, 0, 1])
+                pos = pos[:3] / pos[3]
+                LightPool().color[i] = color.tolist()
+                LightPool().pos[i] = pos.tolist()
+                LightPool().radius[i] = radius
+            else:
+                raise ValueError(type)
+        LightPool().count[None] = len(self.object_to_light)
 
         self.__reset_samples(depsgraph.scene)
 
@@ -234,7 +260,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         view, proj = calc_camera_matrices(depsgraph)
 
         self.__setup_scene(depsgraph)
-        self.__update_camera(perspective)
+        self.__update_camera(proj @ view)
 
         # Here we write the pixel values to the RenderResult
         result = self.begin_result(0, 0, self.size_x, self.size_y)
@@ -462,16 +488,17 @@ def get_panels():
 class TinaRenderProperties(bpy.types.PropertyGroup):
     render_samples: bpy.props.IntProperty(name='Render Samples', min=1, default=128)
     viewport_samples: bpy.props.IntProperty(name='Viewport Samples', min=1, default=32)
-    start_pixel_size: bpy.props.IntProperty(name='Start Pixel Size', min=1, default=1)
+    start_pixel_size: bpy.props.IntProperty(name='Start Pixel Size', min=1, default=1, subtype='PIXEL')
 
 
 def register():
     bpy.utils.register_class(TinaRenderProperties)
 
-    bpy.types.Light.tina_color = bpy.props.FloatVectorProperty(name='Color', subtype='COLOR', min=0, max=1, default=(1, 1, 1))
-    bpy.types.Light.tina_strength = bpy.props.FloatProperty(name='Strength', min=0, default=16)
+    #bpy.types.Light.tina_color = bpy.props.FloatVectorProperty(name='Color', subtype='COLOR', min=0, max=1, default=(1, 1, 1))
+    #bpy.types.Light.tina_strength = bpy.props.FloatProperty(name='Strength', min=0, default=16, subtype='POWER')
+    #bpy.types.Light.tina_radius = bpy.props.FloatProperty(name='Radius', min=0, default=0.1, subtype='DISTANCE')
     bpy.types.World.tina_color = bpy.props.FloatVectorProperty(name='Color', subtype='COLOR', min=0, max=1, default=(0.04, 0.04, 0.04))
-    bpy.types.World.tina_strength = bpy.props.FloatProperty(name='Strength', min=0, default=1)
+    bpy.types.World.tina_strength = bpy.props.FloatProperty(name='Strength', min=0, default=1, subtype='POWER')
     bpy.types.Scene.tina_render = bpy.props.PointerProperty(name='tina', type=TinaRenderProperties)
 
     bpy.utils.register_class(TinaRenderEngine)
@@ -496,9 +523,9 @@ def unregister():
         if 'TINA' in panel.COMPAT_ENGINES:
             panel.COMPAT_ENGINES.remove('TINA')
 
-    del bpy.types.Object.tina_material
-    del bpy.types.Light.tina_color
-    del bpy.types.Light.tina_strength
+    #del bpy.types.Light.tina_color
+    #del bpy.types.Light.tina_strength
+    #del bpy.types.Light.tina_radius
     del bpy.types.World.tina_color
     del bpy.types.World.tina_strength
     del bpy.types.Scene.tina_render

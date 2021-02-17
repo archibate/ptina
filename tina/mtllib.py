@@ -21,8 +21,8 @@ class ParameterPair:
             self.tex[i] = imgid
     
     @ti.func
-    def get(self, mtlid, texcoord):
-        fac = V4(1.0)
+    def get(self, mtlid, texcoord, default=1.0):
+        fac = V4(default)
         if mtlid != -1:
             fac = self.fac[mtlid]
             texid = self.tex[mtlid]
@@ -49,8 +49,8 @@ class MaterialPool(metaclass=Singleton):
 
     def get(self, mtlid, texcoord):
         material = Disney(
-                self.basecolor.get(mtlid, texcoord).xyz,
-                self.metallic.get(mtlid, texcoord).x,
-                self.roughness.get(mtlid, texcoord).x,
+                self.basecolor.get(mtlid, texcoord, 0.8).xyz,
+                self.metallic.get(mtlid, texcoord, 0.0).x,
+                self.roughness.get(mtlid, texcoord, 0.0).x,
                 )
         return material
