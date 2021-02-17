@@ -1,18 +1,33 @@
-from threading import Thread
+import threading
+import queue
 import time
 
 
-t = Thread(target=self.__main, daemon=True)
+q = queue.Queue()
 
 
-@MTWorker
-def worker():
-    def hello():
-        pass
+class DaemonThread(threading.Thread):
+    def __init__(self, func, *args):
+        super().__init__(daemon=True)
+        self.func = func
+        self.args = args
 
-    hello.x = 1
-    return hello.x
+    def run(self):
+        self.func(*self.args)
 
 
-time.sleep(1)
-print(worker.x)
+@DaemonThread
+def func():
+    while True:
+        func = q.get()
+        func()
+        q.task_done()
+
+
+func.start()
+
+@q.put
+def _():
+    print('What the fuck')
+
+q.join()
