@@ -6,6 +6,7 @@ from tina.tools.readgltf import readgltf
 ti.init(ti.cuda)
 init_things()
 PathEngine()
+FilmTable().set_size(512, 512)
 
 vertices, mtlids, materials = readgltf('assets/cornell.gltf')
 ModelPool().load(vertices, mtlids)
@@ -16,8 +17,8 @@ gui = ti.GUI()
 gui.control = CamControl(gui)
 while gui.running:
     if gui.control.process_events():
-        PathEngine().film.clear()
+        FilmTable().clear()
     Camera().set_perspective(gui.control.get_perspective())
     PathEngine().render()
-    gui.set_image(PathEngine().film.get_image())
+    gui.set_image(FilmTable().get_image())
     gui.show()

@@ -41,6 +41,8 @@ class IdAllocator:
 
     def malloc(self):
         id = self.water
+        if id >= self.count:
+            raise RuntimeError('Out of ID!')
         self.water += 1
         return id
 

@@ -1,9 +1,9 @@
-from tina.image import *
 from tina.camera import *
 from tina.model import *
 from tina.light import *
 from tina.materials import *
 from tina.acceltree import *
+from tina.filmtable import *
 from tina.mtllib import *
 from tina.stack import *
 from tina.sobol import *
@@ -19,15 +19,8 @@ def power_heuristic(a, b):
 @ti.data_oriented
 class PathEngine(metaclass=Singleton):
     def __init__(self):
-        #self.bgm = Image.load('assets/env.png')
-
         self.sobol = None
         self.sobol = TaichiSobol()
-
-        nx, ny = 512, 512
-        self.film = Image.new(nx, ny)
-        self.normal = Image.new(nx, ny)
-        self.albedo = Image.new(nx, ny)
 
     def get_rng(self, i, j):
         if ti.static(self.sobol):
@@ -64,7 +57,7 @@ class PathEngine(metaclass=Singleton):
             #'''
 
             if hit.hit == 0:
-                result += throughput * 0.04#self.bgm(*dir2tex(r.d)).xyz
+                result += throughput * 0.05
                 break
 
             avoid = hit.index
@@ -96,17 +89,17 @@ class PathEngine(metaclass=Singleton):
 
     @ti.kernel
     def _render(self):
-        for i, j in ti.ndrange(self.film.nx, self.film.ny):
-            Stack().set(i * self.film.nx + j)
+        for i, j in ti.ndrange(FilmTable().nx, FilmTable().ny):
+            Stack().set(i * FilmTable().nx + j)
             rng = self.get_rng(i, j)
 
             dx, dy = random2(rng)
-            x = (i + dx) / self.film.nx * 2 - 1
-            y = (j + dy) / self.film.ny * 2 - 1
+            x = (i + dx) / FilmTable().nx * 2 - 1
+            y = (j + dy) / FilmTable().ny * 2 - 1
             ray = Camera().generate(x, y)
 
             clr, impo = self.trace(ray, rng)
-            self.film[i, j] += V34(clr, impo)
+            FilmTable().color[i, j] += V34(clr, impo)
 
             Stack().unset()
 
@@ -126,15 +119,15 @@ class PathEngine(metaclass=Singleton):
 
     @ti.kernel
     def render_aov(self):
-        for i, j in ti.ndrange(self.film.nx, self.film.ny):
-            Stack().set(i * self.film.nx + j)
+        for i, j in ti.ndrange(FilmTable().nx, FilmTable().ny):
+            Stack().set(i * FilmTable().nx + j)
 
             albedo = V3(0.0)
             normal = V3(0.0)
 
             dx, dy = random2(ti)
-            x = (i + dx) / self.film.nx * 2 - 1
-            y = (j + dy) / self.film.ny * 2 - 1
+            x = (i + dx) / FilmTable().nx * 2 - 1
+            y = (j + dy) / FilmTable().ny * 2 - 1
             ray = Camera().generate(x, y)
             hit = BVHTree().intersect(ray, -1)
 
@@ -142,7 +135,7 @@ class PathEngine(metaclass=Singleton):
                 hitpos, normal, sign, material = self.get_geometries(hit, ray)
                 albedo = V3(1.0)
 
-            self.albedo[i, j] += V34(albedo, 1.0)
-            self.normal[i, j] += V34(normal, 1.0)
+            FilmTable().albedo[i, j] += V34(albedo, 1.0)
+            FilmTable().normal[i, j] += V34(normal, 1.0)
 
             Stack().unset()

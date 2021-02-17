@@ -5,6 +5,7 @@ from tina.tools.readgltf import readgltf
 ti.init(ti.cuda)
 init_things()
 PathEngine()
+FilmTable().set_size(512, 512)
 
 vertices, mtlids, materials = readgltf('assets/cornell.gltf')
 ModelPool().load(vertices, mtlids)
@@ -22,5 +23,5 @@ nsamples = 32
 for i in range(nsamples):
     PathEngine().render()
 
-img = PathEngine().film.get_image()
+img = FilmTable().get_image()
 ti.imshow(img)

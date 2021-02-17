@@ -272,7 +272,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             if self.test_break():
                 break
             PathEngine().render()
-            img = PathEngine().film.get_image(raw=True)
+            img = FilmTable().get_image(raw=True)
 
             img = np.ascontiguousarray(img.swapaxes(0, 1))
             rect = img.reshape(self.size_x * self.size_y, 4).tolist()
@@ -355,6 +355,9 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         bgl.glBlendFunc(bgl.GL_ONE, bgl.GL_ONE_MINUS_SRC_ALPHA)
         self.bind_display_space_shader(scene)
 
+        if not self.draw_data or self.draw_data.dimensions != dimensions:
+            FilmTable().set_size(*dimensions)
+
         if not self.draw_data or self.draw_data.dimensions != dimensions \
                 or self.draw_data.perspective != perspective:
             self.__reset_samples(scene)
@@ -363,10 +366,10 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         if self.nsamples < max_samples:
             if self.nblocks > 1:
                 self.nsamples = 0
-                PathEngine().film.clear()
+                FilmTable().clear()
             else:
                 if self.nblocks == 1:
-                    PathEngine().film.clear()
+                    FilmTable().clear()
                 self.nsamples += 1
 
             self.update_stats('Rendering', f'{self.nsamples}/{max_samples} Samples')
@@ -394,13 +397,13 @@ class TinaDrawData:
         self.perspective = perspective
         width, height = dimensions
 
-        resx, resy = PathEngine().film.nx, PathEngine().film.ny
+        resx, resy = FilmTable().nx, FilmTable().ny
         if blocksize != 0:
             resx //= blocksize
             resy //= blocksize
 
         pixels = np.empty(resx * resy * 3, np.float32)
-        PathEngine().film._fast_export_image(pixels, blocksize)
+        FilmTable().color._fast_export_image(pixels, blocksize)
         self.pixels = bgl.Buffer(bgl.GL_FLOAT, resx * resy * 3, pixels)
 
         # Generate texture

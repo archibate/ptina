@@ -9,7 +9,7 @@ def _NoToneMap(x):
 class ImagePool(metaclass=Singleton):
     is_taichi_class = True
 
-    def __init__(self, size=2**22, count=2**8):
+    def __init__(self, size=2**24, count=2**8):  # 256 MB
         self.mman = MemoryAllocator(size)
         self.idman = IdAllocator(count)
         self.nx = ti.field(int, count)

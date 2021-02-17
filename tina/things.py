@@ -10,3 +10,4 @@ def init_things():
     LightPool()
     ToneMapping()
     MaterialPool()
+    FilmTable()
