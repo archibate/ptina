@@ -523,11 +523,14 @@ def register():
 
     @mtworker.DaemonModule
     def worker():
+        print('[TinaBlend] importing worker')
         from tina import worker
-        worker.init()
+        print('[TinaBlend] importing worker done')
         return worker
 
-    worker.start()
+    print('[TinaBlend] initializing worker')
+    worker.init()
+    print('[TinaBlend] initializing worker done')
 
 
 def unregister():

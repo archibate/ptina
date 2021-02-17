@@ -54,13 +54,3 @@ class DaemonModule:
             return retval
 
         return wrapped
-
-
-@DaemonModule
-def a():
-    import a
-    return a
-
-
-a.hello()
-print('done', threading.current_thread())

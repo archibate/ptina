@@ -1,4 +1,4 @@
-from tina.model import *
+import numpy as np
 
 
 def compose_multiple_meshes(primitives):
