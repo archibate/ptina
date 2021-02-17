@@ -143,6 +143,40 @@ class TinaRenderPanel(bpy.types.Panel):
         layout.prop(options, 'start_pixel_size')
 
 
+class TinaMaterialPanel(bpy.types.Panel):
+    '''Tina material options'''
+
+    bl_label = 'Tina Material'
+    bl_idname = 'MATERIAL_PT_tina'
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = 'material'
+
+    def draw(self, context):
+        layout = self.layout
+        materials = context.object.data.materials
+        if not len(materials):
+            return
+
+        options = materials[0].tina_material
+
+        layout.prop(options, 'render_samples')
+        layout.prop(options, 'viewport_samples')
+        layout.prop(options, 'start_pixel_size')
+        layout.prop(options, 'basecolor')
+        layout.prop(options, 'metallic')
+        layout.prop(options, 'roughness')
+        layout.prop(options, 'specular')
+        layout.prop(options, 'specularTint')
+        layout.prop(options, 'subsurface')
+        layout.prop(options, 'sheen')
+        layout.prop(options, 'sheenTint')
+        layout.prop(options, 'clearcoat')
+        layout.prop(options, 'clearcoatGloss')
+        layout.prop(options, 'transmission')
+        layout.prop(options, 'ior')
+
+
 class TinaRenderEngine(bpy.types.RenderEngine):
     # These three members are used by blender to set up the
     # RenderEngine; define its internal name, visible name and capabilities.
@@ -515,20 +549,35 @@ class TinaRenderProperties(bpy.types.PropertyGroup):
     start_pixel_size: bpy.props.IntProperty(name='Start Pixel Size', min=1, default=8, subtype='PIXEL')
 
 
+class TinaMaterialProperties(bpy.types.PropertyGroup):
+    basecolor: bpy.props.FloatVectorProperty(name='basecolor', subtype='COLOR', min=0, max=1, default=(0.8, 0.8, 0.8))
+    metallic: bpy.props.FloatProperty(name='metallic', min=0, max=1, default=0.0)
+    roughness: bpy.props.FloatProperty(name='roughness', min=0, max=1, default=0.4)
+    specular: bpy.props.FloatProperty(name='specular', min=0, max=1, default=0.5)
+    specularTint: bpy.props.FloatProperty(name='specularTint', min=0, max=1, default=0.4)
+    subsurface: bpy.props.FloatProperty(name='subsurface', min=0, max=1, default=0.0)
+    sheen: bpy.props.FloatProperty(name='sheen', min=0, max=1, default=0.0)
+    sheenTint: bpy.props.FloatProperty(name='sheenTint', min=0, max=1, default=0.4)
+    clearcoat: bpy.props.FloatProperty(name='clearcoat', min=0, max=1, default=0.0)
+    clearcoatGloss: bpy.props.FloatProperty(name='clearcoatGloss', min=0, max=1, default=0.5)
+    transmission: bpy.props.FloatProperty(name='transmission', min=0, max=1, default=0.0)
+    ior: bpy.props.FloatProperty(name='IOR', min=1, max=3, default=1.45)
+
+
 def register():
     bpy.utils.register_class(TinaRenderProperties)
+    bpy.utils.register_class(TinaMaterialProperties)
 
-    #bpy.types.Light.tina_color = bpy.props.FloatVectorProperty(name='Color', subtype='COLOR', min=0, max=1, default=(1, 1, 1))
-    #bpy.types.Light.tina_strength = bpy.props.FloatProperty(name='Strength', min=0, default=16, subtype='POWER')
-    #bpy.types.Light.tina_radius = bpy.props.FloatProperty(name='Radius', min=0, default=0.1, subtype='DISTANCE')
     bpy.types.World.tina_color = bpy.props.FloatVectorProperty(name='Color', subtype='COLOR', min=0, max=1, default=(0.04, 0.04, 0.04))
     bpy.types.World.tina_strength = bpy.props.FloatProperty(name='Strength', min=0, default=1, subtype='POWER')
     bpy.types.Scene.tina_render = bpy.props.PointerProperty(name='tina', type=TinaRenderProperties)
+    bpy.types.Material.tina_material = bpy.props.PointerProperty(name='tina', type=TinaMaterialProperties)
 
     bpy.utils.register_class(TinaRenderEngine)
     bpy.utils.register_class(TinaLightPanel)
     bpy.utils.register_class(TinaWorldPanel)
     bpy.utils.register_class(TinaRenderPanel)
+    bpy.utils.register_class(TinaMaterialPanel)
 
     for panel in get_panels():
         panel.COMPAT_ENGINES.add('TINA')
@@ -539,16 +588,16 @@ def unregister():
     bpy.utils.unregister_class(TinaLightPanel)
     bpy.utils.unregister_class(TinaWorldPanel)
     bpy.utils.unregister_class(TinaRenderPanel)
+    bpy.utils.unregister_class(TinaMaterialPanel)
 
     for panel in get_panels():
         if 'TINA' in panel.COMPAT_ENGINES:
             panel.COMPAT_ENGINES.remove('TINA')
 
-    #del bpy.types.Light.tina_color
-    #del bpy.types.Light.tina_strength
-    #del bpy.types.Light.tina_radius
     del bpy.types.World.tina_color
     del bpy.types.World.tina_strength
     del bpy.types.Scene.tina_render
+    del bpy.types.Material.tina_material
 
     bpy.utils.unregister_class(TinaRenderProperties)
+    bpy.utils.unregister_class(TinaMaterialProperties)

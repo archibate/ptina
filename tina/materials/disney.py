@@ -8,7 +8,7 @@ class Disney(namespace):
     def __init__(self,
             basecolor=V3(1.0),
             metallic=0.0,
-            roughness=1.0,
+            roughness=0.4,
             specular=0.5,
             specularTint=0.4,
             subsurface=0.0,
