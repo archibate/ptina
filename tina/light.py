@@ -10,6 +10,17 @@ class LightPool(metaclass=Singleton):
         self.radius = ti.field(float, count)
         self.count = ti.field(int, ())
 
+    def clear(self):
+        self.count[None] = 0
+
+    def add(self, color, pos, radius):
+        i = self.count[None]
+        self.color[i] = color
+        self.pos[i] = pos
+        self.radius[i] = radius
+        self.count[None] = i + 1
+        return i
+
     @ti.func
     def hit(self, ray):
         ret = namespace(dis=0.0, pdf=0.0, color=V3(0.0))

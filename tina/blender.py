@@ -84,8 +84,11 @@ class TinaLightPanel(bpy.types.Panel):
 
         if object.type == 'LIGHT':
             layout.prop(object.data, 'color')
-            layout.prop(object.data, 'energy', text='Strength')
-            layout.prop(object.data, 'shadow_soft_size', text='Radius')
+            layout.prop(object.data, 'energy')
+            if object.data.type == 'POINT':
+                layout.prop(object.data, 'shadow_soft_size', text='Radius')
+            elif object.data.type == 'AREA':
+                layout.prop(object.data, 'size')
 
 
 class TinaWorldPanel(bpy.types.Panel):
@@ -163,11 +166,18 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         world = np.array(object.matrix_world)
         color = np.array(object.data.color)
         color *= object.data.energy
-        radius = max(object.data.shadow_soft_size, eps)
-        color /= 2 * np.pi * radius**2
         type = object.data.type
 
-        self.object_to_light[object] = world, color, radius, type
+        if type == 'POINT':
+            size = max(object.data.shadow_soft_size, eps)
+            color /= 2 * np.pi * size**2
+        elif type == 'AREA':
+            assert object.data.shape == 'SQUARE'
+            size = max(object.data.size, eps)
+        else:
+            raise ValueError(type)
+
+        self.object_to_light[object] = world, color, size, type
 
     def __setup_scene(self, depsgraph):
         self.update_stats('Initializing', 'Loading scene')
@@ -232,17 +242,9 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         BVHTree().build()
 
         self.update_stats('Initializing', 'Updating lights')
-        lights = []
-        for i, (world, color, radius, type) in enumerate(self.object_to_light.values()):
-            if type == 'POINT':
-                pos = world @ np.array([0, 0, 0, 1])
-                pos = pos[:3] / pos[3]
-                LightPool().color[i] = color.tolist()
-                LightPool().pos[i] = pos.tolist()
-                LightPool().radius[i] = radius
-            else:
-                raise ValueError(type)
-        LightPool().count[None] = len(self.object_to_light)
+        LightPool().clear()
+        for world, color, size, type in self.object_to_light.values():
+            LightPool().add(world, color, size, type)
 
         self.__reset_samples(depsgraph.scene)
 
@@ -357,7 +359,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
         if not self.draw_data or self.draw_data.dimensions != dimensions \
                 or self.nblocks != 0:
-            FilmTable().set_size(*V(*dimensions) // self.nblocks)
+            FilmTable().set_size(*V(*dimensions) // max(1, self.nblocks))
 
         if not self.draw_data or self.draw_data.dimensions != dimensions \
                 or self.draw_data.perspective != perspective:
