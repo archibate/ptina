@@ -163,8 +163,8 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         world = np.array(object.matrix_world)
         color = np.array(object.data.color)
         color *= object.data.energy
-        color /= 4 * ti.pi * object.data.shadow_soft_size**2
-        radius = min(object.data.shadow_soft_size, eps)
+        radius = max(object.data.shadow_soft_size, eps)
+        color /= 4 * ti.pi * radius**2
         type = object.data.type
 
         self.object_to_light[object] = world, color, radius, type
@@ -511,6 +511,7 @@ def register():
 
     ti.init(ti.cuda)
     init_things()
+    PathEngine()
 
 
 def unregister():

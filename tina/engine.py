@@ -6,7 +6,7 @@ from tina.materials import *
 from tina.acceltree import *
 from tina.mtllib import *
 from tina.stack import *
-#from tina.sobol import *
+from tina.sobol import *
 
 
 @ti.func
@@ -22,7 +22,7 @@ class PathEngine(metaclass=Singleton):
         #self.bgm = Image.load('assets/env.png')
 
         self.sobol = None
-        #self.sobol = TaichiSobol()
+        self.sobol = TaichiSobol()
 
         nx, ny = 512, 512
         self.film = Image.new(nx, ny)
