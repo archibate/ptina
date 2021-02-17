@@ -1,8 +1,12 @@
 import bpy
 import bgl
+import numpy as np
+import mtworker
 
-from tina.things import *
-from tina.multimesh import *
+from tina.multimesh import compose_multiple_meshes
+
+
+worker = None
 
 
 def calc_camera_matrices(depsgraph):
@@ -152,7 +156,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         pass
 
     def __add_mesh_object(self, object, depsgraph):
-        print('adding mesh object', object.name)
+        print('[TinaBlend] adding mesh object', object.name)
 
         verts, norms, coors = blender_get_object_mesh(object, depsgraph)
         world = np.array(object.matrix_world)
@@ -161,7 +165,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         self.object_to_mesh[object] = world, verts, norms, coors, mtlid
 
     def __add_light_object(self, object, depsgraph):
-        print('adding light object', object.name)
+        print('[TinaBlend] adding light object', object.name)
 
         world = np.array(object.matrix_world)
         color = np.array(object.data.color)
@@ -169,11 +173,11 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         type = object.data.type
 
         if type == 'POINT':
-            size = max(object.data.shadow_soft_size, eps)
+            size = max(object.data.shadow_soft_size, 1e-6)
             color /= 2 * np.pi * size**2
         elif type == 'AREA':
             assert object.data.shape == 'SQUARE'
-            size = max(object.data.size, eps)
+            size = max(object.data.size, 1e-6)
         else:
             raise ValueError(type)
 
@@ -203,7 +207,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
                 obj_to_del = []
                 for obj in self.object_to_mesh:
                     if obj.name not in object.objects:
-                        print('removing mesh object', obj)
+                        print('[TinaBlend] removing mesh object', obj)
                         obj_to_del.append(obj)
                 for obj in obj_to_del:
                     del self.object_to_mesh[obj]
@@ -212,7 +216,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
                 obj_to_del = []
                 for obj in self.object_to_light:
                     if obj.name not in object.objects:
-                        print('removing light object', obj)
+                        print('[TinaBlend] removing light object', obj)
                         obj_to_del.append(obj)
                 for obj in obj_to_del:
                     del self.object_to_light[obj]
@@ -237,14 +241,14 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             meshes.append((verts, norms, coors, world, mtlid))
         vertices, mtlids = compose_multiple_meshes(meshes)
 
-        ModelPool().load(vertices, mtlids)
+        worker.load_model(vertices, mtlids)
         self.update_stats('Initializing', 'Constructing tree')
-        BVHTree().build()
+        worker.build_tree()
 
         self.update_stats('Initializing', 'Updating lights')
-        LightPool().clear()
+        worker.clear_lights()
         for world, color, size, type in self.object_to_light.values():
-            LightPool().add(world, color, size, type)
+            worker.add_light(world, color, size, type)
 
         self.__reset_samples(depsgraph.scene)
 
@@ -273,8 +277,8 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             self.update_progress((samp + .5) / nsamples)
             if self.test_break():
                 break
-            PathEngine().render()
-            img = FilmTable().get_image(raw=True)
+            worker.render()
+            img = worker.get_image()
 
             img = np.ascontiguousarray(img.swapaxes(0, 1))
             rect = img.reshape(self.size_x * self.size_y, 4).tolist()
@@ -288,14 +292,14 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         self.end_result(result)
 
     def __update_camera(self, perspective):
-        Camera().set_perspective(np.array(perspective))
+        worker.set_camera(np.array(perspective))
 
     # For viewport renders, this method gets called once at the start and
     # whenever the scene or 3D viewport changes. This method is where data
     # should be read from Blender in the same thread. Typically a render
     # thread will be started to do the work while keeping Blender responsive.
     def view_update(self, context, depsgraph):
-        print('view_update')
+        print('[TinaBlend] view_update')
 
         region = context.region
         region3d = context.region_data
@@ -313,13 +317,13 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             first_time = True
 
             # Loop over all datablocks used in the scene.
-            print('setup scene')
+            print('[TinaBlend] setup scene')
             self.__setup_scene(depsgraph)
             self.__update_camera(perspective)
         else:
             first_time = False
 
-            print('update scene')
+            print('[TinaBlend] update scene')
             # Test which datablocks changed
             for update in depsgraph.updates:
                 print("Datablock updated:", update.id.name)
@@ -328,7 +332,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
             # Test if any material was added, removed or changed.
             if depsgraph.id_type_updated('MATERIAL'):
-                print("Materials updated")
+                print('[TinaBlend] Materials updated')
 
         # Loop over all object instances in the scene.
         if first_time or depsgraph.id_type_updated('OBJECT'):
@@ -341,7 +345,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
     # Blender will draw overlays for selection and editing on top of the
     # rendered image automatically.
     def view_draw(self, context, depsgraph):
-        print('view_draw')
+        print('[TinaBlend] view_draw')
 
         region = context.region
         region3d = context.region_data
@@ -359,7 +363,11 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
         if not self.draw_data or self.draw_data.dimensions != dimensions \
                 or self.nblocks != 0:
-            FilmTable().set_size(*V(*dimensions) // max(1, self.nblocks))
+            width, height = dimensions
+            if self.nblocks != 0:
+                width //= self.nblocks
+                height //= self.nblocks
+            worker.set_size(width, height)
 
         if not self.draw_data or self.draw_data.dimensions != dimensions \
                 or self.draw_data.perspective != perspective:
@@ -369,15 +377,15 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         if self.nsamples < max_samples:
             if self.nblocks > 1:
                 self.nsamples = 0
-                FilmTable().clear()
+                worker.clear()
             else:
                 if self.nblocks == 1:
-                    FilmTable().clear()
+                    worker.clear()
                 self.nsamples += 1
 
             self.update_stats('Rendering', f'{self.nsamples}/{max_samples} Samples')
 
-            PathEngine().render(aa=(self.nblocks == 0))
+            worker.render(self.nblocks == 0)
             self.draw_data = TinaDrawData(dimensions, perspective)
 
             if self.nsamples < max_samples or self.nblocks != 0:
@@ -393,16 +401,16 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
 class TinaDrawData:
     def __init__(self, dimensions, perspective):
-        print('redraw!')
+        print('[TinaBlend] redraw!')
         # Generate dummy float image buffer
         self.dimensions = dimensions
         self.perspective = perspective
         width, height = dimensions
 
-        resx, resy = FilmTable().nx, FilmTable().ny
+        resx, resy = worker.get_size()
 
         pixels = np.empty(resx * resy * 3, np.float32)
-        FilmTable()._fast_export_image(0, pixels)
+        worker.fast_export_image(pixels)
         self.pixels = bgl.Buffer(bgl.GL_FLOAT, resx * resy * 3, pixels)
 
         # Generate texture
@@ -511,9 +519,14 @@ def register():
     for panel in get_panels():
         panel.COMPAT_ENGINES.add('TINA')
 
-    ti.init(ti.cuda)
-    init_things()
-    PathEngine()
+    global worker
+
+    @mtworker.MTWorker
+    def worker():
+        from tina import worker
+        return worker
+
+    worker.init()
 
 
 def unregister():
