@@ -1,5 +1,4 @@
 from tina.things import *
-from threading import Thread, Queue
 
 
 def init():

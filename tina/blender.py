@@ -524,9 +524,10 @@ def register():
     @mtworker.MTWorker
     def worker():
         from tina import worker
+        worker.init()
         return worker
 
-    worker.init()
+    worker.start()
 
 
 def unregister():
