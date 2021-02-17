@@ -1,5 +1,6 @@
 import functools
 import threading
+import traceback
 import queue
 import time
 
@@ -23,7 +24,12 @@ class DaemonWorker:
     def daemon_main(self):
         while True:
             func = self.queue.get()
-            func.retval = func()
+            try:
+                ret = func()
+            except BaseException:
+                traceback.format_exc()
+                ret = None
+            func.retval = ret
             self.queue.task_done()
 
     def launch(self, func):
