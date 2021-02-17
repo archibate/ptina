@@ -6,7 +6,20 @@ import mtworker
 from tina.multimesh import compose_multiple_meshes
 
 
-worker = None
+@mtworker.OnDemandProxy
+def worker():
+    @mtworker.DaemonModule
+    def worker():
+        print('[TinaBlend] importing worker')
+        from tina import worker
+        print('[TinaBlend] importing worker done')
+        return worker
+
+    print('[TinaBlend] initializing worker')
+    worker.init()
+    print('[TinaBlend] initializing worker done')
+
+    return worker
 
 
 def calc_camera_matrices(depsgraph):
@@ -518,19 +531,6 @@ def register():
 
     for panel in get_panels():
         panel.COMPAT_ENGINES.add('TINA')
-
-    global worker
-
-    @mtworker.DaemonModule
-    def worker():
-        print('[TinaBlend] importing worker')
-        from tina import worker
-        print('[TinaBlend] importing worker done')
-        return worker
-
-    print('[TinaBlend] initializing worker')
-    worker.init()
-    print('[TinaBlend] initializing worker done')
 
 
 def unregister():

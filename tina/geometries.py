@@ -124,21 +124,25 @@ class Sphere(namespace):
         self.pos = pos
         self.rad2 = rad2
 
-    @multireturn
     @ti.func
     def intersect(self, ray):
-        yield 0.0
+        ret = 0.0
 
         op = self.pos - ray.o
         b = op.dot(ray.d)
         det = b * b + self.rad2 - op.norm_sqr()
         if det < 0:
-            yield 0.0
-        det = ti.sqrt(det)
-        t = b - det
-        if t > eps:
-            yield t
-        t = b + det
-        if t > eps:
-            yield t
-        yield 0.0
+            ret = 0.0
+        else:
+            det = ti.sqrt(det)
+            t = b - det
+            if t > eps:
+                ret = t
+            else:
+                t = b + det
+                if t > eps:
+                    ret = t
+                else:
+                    ret = 0.0
+
+        return ret

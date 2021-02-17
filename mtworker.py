@@ -34,23 +34,58 @@ class DaemonWorker:
 
 class DaemonModule:
     def __init__(self, getmodule):
-        self.worker = DaemonWorker()
+        self._worker = DaemonWorker()
 
-        @self.worker.launch
+        @self._worker.launch
         def _():
-            self.module = getmodule()
+            self._module = getmodule()
 
-    def __getattr__(self, name):
-        func = getattr(self.module, name)
+    def _wrap(self, func):
         if not callable(func):
             return func
 
         @functools.wraps(func)
         def wrapped(*args, **kwargs):
-            @self.worker.launch
+            @self._worker.launch
             def retval():
                 return func(*args, **kwargs)
 
-            return retval
+            return self._wrap(retval)
 
         return wrapped
+
+    def __getattr__(self, name):
+        func = getattr(self._module, name)
+        return self._wrap(func)
+
+
+class OnDemandProxy:
+    def __init__(self, getmodule):
+        self._getmodule = getmodule
+        self._module = None
+        self._lock = threading.Lock()
+
+    def _try_load(self):
+        if self._module is None:
+            with self._lock:
+                if self._module is None:
+                    self._module = self._getmodule()
+
+    def __getattr__(self, name):
+        self._try_load()
+        return getattr(self._module, name)
+
+
+if __name__ == '__main__':
+    @DaemonModule
+    def ti():
+        import taichi
+        return taichi
+
+    ti.init(ti.opengl)
+
+    @ti.kernel
+    def func():
+        print('hello')
+
+    func()
