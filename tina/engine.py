@@ -50,7 +50,7 @@ class PathEngine(metaclass=Singleton):
 
             #'''
             lit = LightPool().hit(r)
-            if hit.hit == 0 or lit.dis < hit.depth:
+            if lit.hit != 0 and (hit.hit == 0 or lit.dis < hit.depth):
                 mis = power_heuristic(last_brdf_pdf, lit.pdf)
                 direct_li = mis * lit.color
                 result += throughput * direct_li
