@@ -9,6 +9,7 @@ class LightPool(metaclass=Singleton):
     def __init__(self, count=2**6):
         self.color = ti.Vector.field(3, float, count)
         self.pos = ti.Vector.field(3, float, count)
+        self.world = ti.Matrix.field(4, 4, float, count)
         self.size = ti.field(float, count)
         self.type = ti.field(int, count)
         self.count = ti.field(int, ())
@@ -25,6 +26,7 @@ class LightPool(metaclass=Singleton):
         self.type[i] = self.TYPES[type]
         self.color[i] = color.tolist()
         self.pos[i] = pos.tolist()
+        self.world[i] = world.tolist()
         self.size[i] = size
 
         self.count[None] = i + 1
@@ -55,10 +57,14 @@ class LightPool(metaclass=Singleton):
         return ret
 
     @ti.func
-    def sample(self, pos, samp):
+    def sample(self, hitpos, samp):
         i = clamp(ifloor(samp.z * self.count[None]), 0, self.count[None])
-        litpos = self.pos[i] + self.size[i] * spherical(samp.x, samp.y)
-        toli = litpos - pos
+
+        pos = V(self.world[i][0, 3], self.world[i][1, 3], self.world[i][2, 3])
+        #self_pos_i = mapplypos(self.world[i], V3(0.0))
+
+        litpos = pos + self.size[i] * spherical(samp.x, samp.y)
+        toli = litpos - hitpos
 
         dis = toli.norm()
         dir = toli / dis
