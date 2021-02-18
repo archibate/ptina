@@ -43,16 +43,20 @@ class LightPool(metaclass=Singleton):
             color = self.color[i]
             pos = self.pos[i]
             size = self.size[i]
+            axes = self.axes[i]
 
             t = 0.0
+            area = 0.0
             if type == self.TYPES['POINT']:
                 t = Sphere(pos, size**2).intersect(ray)
+                area = ti.pi * size**2
             elif type == self.TYPES['AREA']:
                 t = 0.0
+                area = ti.pi * size**2
 
             if 0 < t < ret.dis:
                 ret.dis = t
-                ret.pdf = ret.dis**2 / (ti.pi * size**2)
+                ret.pdf = ret.dis**2 / area
                 ret.color = color
                 ret.hit = 1
                 break
@@ -64,6 +68,9 @@ class LightPool(metaclass=Singleton):
 
         type = self.type[i]
         color = self.color[i]
+        pos = self.pos[i]
+        size = self.size[i]
+        axes = self.axes[i]
 
         litpos = V3(inf)
         norm = V3(0.0)
@@ -71,13 +78,13 @@ class LightPool(metaclass=Singleton):
 
         if type == self.TYPES['POINT']:
             disp = spherical(samp.x, samp.y)
-            litpos = self.pos[i] + self.size[i] * disp
-            area = ti.pi * self.size[i]**2
+            litpos = pos + size * disp
+            area = ti.pi * size**2
         elif type == self.TYPES['AREA']:
-            disp = self.axes[i] @ V(samp.x * 2 - 1, samp.y * 2 - 1, 0.0)
-            norm = self.axes[i] @ V(0.0, 0.0, 1.0)
-            litpos = self.pos[i] + self.size[i] * disp
-            area = 4 * self.size[i]**2
+            disp = axes @ V(samp.x * 2 - 1, samp.y * 2 - 1, 0.0)
+            norm = axes @ V(0.0, 0.0, 1.0)
+            litpos = pos + size * disp
+            area = 4 * size**2
 
         toli = litpos - hitpos
         dis = toli.norm()
