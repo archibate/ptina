@@ -6,7 +6,7 @@ from tina.acceltree import *
 from tina.filmtable import *
 from tina.mtllib import *
 from tina.stack import *
-#from tina.sobol import *
+from tina.sobol import *
 
 
 @ti.func
@@ -19,8 +19,9 @@ def power_heuristic(a, b):
 @ti.data_oriented
 class PathEngine(metaclass=Singleton):
     def __init__(self):
-        self.sobol = None
-        #self.sobol = TaichiSobol()
+        self.path = 1
+
+        self.sobol = TaichiSobol()
 
     def get_rng(self, i, j):
         if ti.static(self.sobol):

@@ -80,50 +80,39 @@ class TaichiSobol:
         def __init__(self, sobol, x):
             self.sobol = sobol
             self.x = ti.expr_init(x)
-            self.y = ti.expr_init(0)
 
         @ti.func
         def random(self):
-            ret = self.sobol.calc(wanghash2(self.x, self.y))
-            self.y += 1
+            ret = self.sobol.calc(self.x)
+            self.x += 1
             return ret
 
 
 if __name__ == '__main__':
     n = 128
-    sobol1 = TaichiSobol(1024)
-    sobol2 = TaichiSobol(1024)
-    img1 = ti.field(float, (n, n))
-    img2 = ti.field(float, (n, n))
-    img3 = ti.field(float, (n, n))
+    sobol = TaichiSobol(1024)
+    img1 = ti.Vector.field(3, float, (n, n))
+    img2 = ti.Vector.field(3, float, (n, n))
 
 
     @ti.kernel
     def render_image():
         for i, j in ti.ndrange(n, n):
-            id = wanghash2(i, j)
-            so = sobol1.get_proxy(id)
-            img1[i, j] += so.random()
-            img2[i, j] += sobol2.calc(id)
-            img3[i, j] += ti.random()
+            so = sobol.get_proxy(wanghash2(i, j))
+            img1[i, j] += V(so.random(), so.random(), so.random())
+            img2[i, j] += V(ti.random(), ti.random(), ti.random())
 
 
-    gui1 = ti.GUI('sobol+hash')
-    gui2 = ti.GUI('sobol')
-    gui3 = ti.GUI('pseudo')
-    gui1.fps_limit = 10
-    gui2.fps_limit = 10
-    gui3.fps_limit = 10
-    while gui1.running and gui2.running and gui3.running:
-        sobol1.update()
-        sobol2.update()
+    gui1 = ti.GUI('sobol')
+    gui2 = ti.GUI('pseudo')
+    gui2.fps_limit = gui1.fps_limit = 5
+    while gui1.running and gui2.running:
+        sobol.update()
         render_image()
         gui1.set_image(ti.imresize(img1.to_numpy() / (1 + gui1.frame), 512))
         gui2.set_image(ti.imresize(img2.to_numpy() / (1 + gui2.frame), 512))
-        gui3.set_image(ti.imresize(img3.to_numpy() / (1 + gui3.frame), 512))
         gui1.show()
         gui2.show()
-        gui3.show()
 
 
 __all__ = ['wanghash', 'wanghash2', 'wanghash3', 'TaichiSobol']
