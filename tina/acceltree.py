@@ -109,8 +109,7 @@ class _BVHTree:
                 self.process_leaf(ret, curr, ray, avoid)
                 continue
 
-            hit_box = self.getbox(curr).intersect(ray).hit != 0
-            if not hit_box:
+            if self.getbox(curr).intersect(ray).hit == 0:
                 continue
 
             ntimes += 1

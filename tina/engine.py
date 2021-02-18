@@ -6,7 +6,7 @@ from tina.acceltree import *
 from tina.filmtable import *
 from tina.mtllib import *
 from tina.stack import *
-from tina.sobol import *
+#from tina.sobol import *
 
 
 @ti.func
@@ -20,7 +20,7 @@ def power_heuristic(a, b):
 class PathEngine(metaclass=Singleton):
     def __init__(self):
         self.sobol = None
-        self.sobol = TaichiSobol()
+        #self.sobol = TaichiSobol()
 
     def get_rng(self, i, j):
         if ti.static(self.sobol):
@@ -55,6 +55,9 @@ class PathEngine(metaclass=Singleton):
                 direct_li = mis * lit.color
                 result += throughput * direct_li
             #'''
+
+            #result = hit.hit
+            #break
 
             if hit.hit == 0:
                 result += throughput * 0.05
@@ -107,6 +110,7 @@ class PathEngine(metaclass=Singleton):
     def get_geometries(self, hit, r):
         face = ModelPool().get_face(hit.index)
         normal = face.normal(hit)
+        #normal = face.true_normal()
         texcoord = face.texcoord(hit)
         hitpos = r.o + hit.depth * r.d
 
