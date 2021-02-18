@@ -32,7 +32,7 @@ class LightPool(metaclass=Singleton):
 
     @ti.func
     def hit(self, ray):
-        ret = namespace(dis=0.0, pdf=0.0, color=V3(0.0))
+        ret = namespace(hit=0, dis=inf, pdf=0.0, color=V3(0.0))
 
         for i in range(self.count[None]):
             type = self.type[i]
@@ -46,10 +46,11 @@ class LightPool(metaclass=Singleton):
             elif type == self.TYPES['AREA']:
                 t = 2.33
 
-            if t != 0:
+            if 0 < t < ret.dis:
                 ret.dis = t
                 ret.pdf = ret.dis**2 / (ti.pi * size**2)
                 ret.color = color
+                ret.hit = 1
                 break
         return ret
 
