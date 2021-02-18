@@ -9,7 +9,7 @@ class LightPool(metaclass=Singleton):
     def __init__(self, count=2**6):
         self.color = ti.Vector.field(3, float, count)
         self.pos = ti.Vector.field(3, float, count)
-        self.world = ti.Matrix.field(4, 4, float, count)
+        self.axes = ti.Matrix.field(3, 3, float, count)
         self.size = ti.field(float, count)
         self.type = ti.field(int, count)
         self.count = ti.field(int, ())
@@ -23,10 +23,12 @@ class LightPool(metaclass=Singleton):
         pos = world @ np.array([0, 0, 0, 1])
         pos = pos[:3] / pos[3]
 
+        axes = world[:3, :3]
+
         self.type[i] = self.TYPES[type]
         self.color[i] = color.tolist()
         self.pos[i] = pos.tolist()
-        self.world[i] = world.tolist()
+        self.axes[i] = axes.tolist()
         self.size[i] = size
 
         self.count[None] = i + 1
@@ -60,12 +62,16 @@ class LightPool(metaclass=Singleton):
     def sample(self, hitpos, samp):
         i = clamp(ifloor(samp.z * self.count[None]), 0, self.count[None])
 
-        pos = V(self.world[i][0, 3], self.world[i][1, 3], self.world[i][2, 3])
-        #self_pos_i = mapplypos(self.world[i], V3(0.0))
+        litpos = V3(inf)
+        type = self.type[i]
+        if type == self.TYPES['POINT']:
+            disp = spherical(samp.x, samp.y)
+            litpos = self.pos[i] + self.size[i] * disp
+        elif type == self.TYPES['AREA']:
+            disp = self.axes[i] @ V(samp.x, samp.y, 0.0)
+            litpos = self.pos[i] + self.size[i] * disp
 
-        litpos = pos + self.size[i] * spherical(samp.x, samp.y)
         toli = litpos - hitpos
-
         dis = toli.norm()
         dir = toli / dis
         pdf = dis**2 / (ti.pi * self.size[i]**2)
