@@ -43,6 +43,33 @@ class Box(namespace):
 
 
 @ti.data_oriented
+class Area(namespace):
+    @ti.func
+    def __init__(self, pos, dirx, diry):
+        self.pos = pos
+        self.dirx = dirx
+        self.diry = diry
+
+    @ti.func
+    def intersect(self, ray):
+        t = inf
+        u, v = 0., 0.
+        hit = 0
+
+        nrm = self.dirx.cross(self.diry).normalized()
+        NoD = nrm.dot(ray.d)
+        if NoD > eps:
+            t = nrm.dot(self.pos - ray.o) / NoD
+            hitdisp = ray.o + t * ray.d - self.pos
+            u = hitdisp.dot(self.dirx) / self.dirx.norm_sqr()
+            v = hitdisp.dot(self.diry) / self.diry.norm_sqr()
+            if -1 < u < 1 and -1 < v < 1:
+                hit = 1
+
+        return namespace(hit=hit, depth=t, uv=V(u, v))
+
+
+@ti.data_oriented
 class Face(namespace):
     @ti.func
     def __init__(self, v0, v1, v2, vn0, vn1, vn2, vt0, vt1, vt2, mtlid):

@@ -51,8 +51,12 @@ class LightPool(metaclass=Singleton):
                 t = Sphere(pos, size**2).intersect(ray)
                 area = ti.pi * size**2
             elif type == self.TYPES['AREA']:
-                t = 0.0
-                area = ti.pi * size**2
+                dirx = axes @ V(size, 0.0, 0.0)
+                diry = axes @ V(0.0, size, 0.0)
+                hit = Area(pos, dirx, diry).intersect(ray)
+                if hit.hit:
+                    t = hit.depth
+                    area = 4 * size**2
 
             if 0 < t < ret.dis:
                 ret.dis = t
