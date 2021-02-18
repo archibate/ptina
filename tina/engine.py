@@ -56,9 +56,6 @@ class PathEngine(metaclass=Singleton):
                 result += throughput * direct_li
             #'''
 
-            #result = hit.hit
-            #break
-
             if hit.hit == 0:
                 result += throughput * 0.05
                 break

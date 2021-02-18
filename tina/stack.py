@@ -4,7 +4,7 @@ from tina.localarray import *
 
 @ti.data_oriented
 class GlobalStack(metaclass=Singleton):
-    def __init__(self, N_mt=512 * 512, N_len=32):
+    def __init__(self, N_mt=2**18, N_len=32):  # 32 MB
         if ti.cfg.arch == ti.cpu and ti.cfg.cpu_max_num_threads == 1 or ti.cfg.arch == ti.cc:
             N_mt = 1
         print('[Tina] Using', N_mt, 'global stacks')
