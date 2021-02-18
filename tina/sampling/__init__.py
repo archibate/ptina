@@ -1,4 +1,4 @@
-from tina.sobol import *
+from tina.sampling.sobol import *
 
 
 @ti.data_oriented
