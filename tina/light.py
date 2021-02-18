@@ -48,7 +48,7 @@ class LightPool(metaclass=Singleton):
             if type == self.TYPES['POINT']:
                 t = Sphere(pos, size**2).intersect(ray)
             elif type == self.TYPES['AREA']:
-                t = 2.33
+                t = 0.0
 
             if 0 < t < ret.dis:
                 ret.dis = t
@@ -62,18 +62,28 @@ class LightPool(metaclass=Singleton):
     def sample(self, hitpos, samp):
         i = clamp(ifloor(samp.z * self.count[None]), 0, self.count[None])
 
-        litpos = V3(inf)
         type = self.type[i]
+        color = self.color[i]
+
+        litpos = V3(inf)
+        norm = V3(0.0)
+        area = 0.0
+
         if type == self.TYPES['POINT']:
             disp = spherical(samp.x, samp.y)
             litpos = self.pos[i] + self.size[i] * disp
+            area = ti.pi * self.size[i]**2
         elif type == self.TYPES['AREA']:
-            disp = self.axes[i] @ V(samp.x, samp.y, 0.0)
+            disp = self.axes[i] @ V(samp.x * 2 - 1, samp.y * 2 - 1, 0.0)
+            norm = self.axes[i] @ V(0.0, 0.0, 1.0)
             litpos = self.pos[i] + self.size[i] * disp
+            area = 4 * self.size[i]**2
 
         toli = litpos - hitpos
         dis = toli.norm()
         dir = toli / dis
-        pdf = dis**2 / (ti.pi * self.size[i]**2)
-        color = self.color[i] / pdf
+        pdf = dis**2 / area
+        color = color / pdf
+        if Vany(norm != 0):
+            color *= dot_or_zero(norm, dir)
         return namespace(dis=dis, dir=dir, pdf=pdf, color=color)

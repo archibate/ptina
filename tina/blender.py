@@ -224,7 +224,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             color /= 8 * np.pi * size**2
         elif type == 'AREA':
             assert object.data.shape == 'SQUARE'
-            size = max(object.data.size, 1e-6)
+            size = max(object.data.size / 2, 1e-6)
         else:
             raise ValueError(type)
 
