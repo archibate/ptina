@@ -1,5 +1,6 @@
 from tina.common import *
 try:
+    # https://github.com/archibate/pysobol
     from pysobol import Sobol as NumpySobol
 except ImportError:
     please_install('pysobol')
@@ -52,7 +53,7 @@ def binaryreverse(i):
 
 @ti.data_oriented
 class TaichiSobol:
-    def __init__(self, dim=21201, nsamples=2**20, skip=17):
+    def __init__(self, dim=21201, nsamples=2**20, skip=47):
         self.dim = dim
         self.nsamples = nsamples
         self.skip = skip

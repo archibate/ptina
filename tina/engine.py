@@ -4,9 +4,9 @@ from tina.light import *
 from tina.materials import *
 from tina.acceltree import *
 from tina.filmtable import *
+from tina.sampling import *
 from tina.mtllib import *
 from tina.stack import *
-from tina.sobol import *
 
 
 @ti.func
@@ -19,19 +19,13 @@ def power_heuristic(a, b):
 @ti.data_oriented
 class PathEngine(metaclass=Singleton):
     def __init__(self):
-        self.path = 1
-
-        self.sobol = TaichiSobol()
+        self.rng = RNGSobol()
 
     def get_rng(self, i, j):
-        if ti.static(self.sobol):
-            return self.sobol.get_proxy(wanghash2(i, j))
-        else:
-            return ti
+        return self.rng.get_proxy(wanghash2(i, j))
 
     def render(self, aa=True):
-        if ti.static(self.sobol):
-            self.sobol.update()
+        self.rng.update()
         self._render()
 
     @ti.func
@@ -58,7 +52,7 @@ class PathEngine(metaclass=Singleton):
             #'''
 
             if hit.hit == 0:
-                result += throughput * 0.05
+                result += throughput# * 0.05
                 break
 
             avoid = hit.index
