@@ -51,6 +51,6 @@ class MaterialPool(metaclass=Singleton):
         material = Disney(
                 self.basecolor.get(mtlid, texcoord, 0.8).xyz,
                 self.metallic.get(mtlid, texcoord, 0.0).x,
-                self.roughness.get(mtlid, texcoord, 0.0).x,
+                self.roughness.get(mtlid, texcoord, 0.3).x,
                 )
         return material

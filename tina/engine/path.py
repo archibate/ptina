@@ -14,8 +14,7 @@ class PathEngine(metaclass=Singleton):
         RNGSobol()
 
     def get_rng(self, i, j):
-        #return RNGSobol().get_proxy(wanghash2(i, j))
-        return ti
+        return RNGSobol().get_proxy(wanghash2(i, j))
 
     def render(self):
         RNGSobol().update()
