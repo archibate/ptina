@@ -24,38 +24,34 @@ nchains = 1024
 ndims = 2
 
 
-Xs = ti.Vector.field(ndims, float, nchains)
-Ls = ti.field(float, nchains)
+X_old = ti.Vector.field(ndims, float, nchains)
+X_new = ti.Vector.field(ndims, float, nchains)
+L_old = ti.field(float, nchains)
+L_new = ti.field(float, nchains)
 
 
 @ti.kernel
 def render():
     for i in range(nchains):
-        X_old = Xs[i]
-        L_old = Ls[i]
-
-        X_new = X_old
+        X_new[i] = X_old[i]
         if i == 0 or ti.random() < LSP:
-            X_new = random2(ti)
+            X_new[i] = random2(ti)
         else:
             dX = 0.1 * normaldist(random2(ti))
-            X_new = (X_old + dX) % 1
+            X_new[i] = (X_old[i] + dX) % 1
 
-        L_new = trace(X_new)
+        L_new[i] = trace(X_new[i])
 
-        AL_new = Vavg(L_new) + 1e-10
-        AL_old = Vavg(L_old) + 1e-10
+        AL_new = Vavg(L_new[i]) + 1e-10
+        AL_old = Vavg(L_old[i]) + 1e-10
         accept = min(1, AL_new / AL_old)
         if accept > 0:
-            splat(X_new, accept * L_new / AL_new)
-        splat(X_old, 1 - accept * L_old / AL_old)
+            splat(X_new[i], accept * L_new[i] / AL_new)
+        splat(X_old[i], 1 - accept * L_old[i] / AL_old)
 
         if accept > ti.random():
-            L_old = L_new
-            X_old = X_new
-
-        Xs[i] = X_old
-        Ls[i] = L_old
+            L_old[i] = L_new[i]
+            X_old[i] = X_new[i]
 
 
 gui = ti.GUI()
