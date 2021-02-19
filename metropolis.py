@@ -4,7 +4,7 @@ from tina.common import *
 @ti.pyfunc
 def trace(rng):
     x, y = rng.random(), rng.random()
-    return (x - 0.5)**2 + (y - 0.34)**2
+    return ((x - 0.5)**2 + (y - 0.34)**2) * 0.1
 
 
 nres = V(64, 64)
@@ -16,10 +16,10 @@ count = ti.field(float, nres)
 def splat(X, L):
     I = clamp(ifloor(X * nres), 0, nres - 1)
     film[I] += L
-    count[I] += 1
 
 
-LSP = 0.1
+LSP = 0.04
+Sigma = 0.03
 
 nchains = 1024
 ndims = 2
@@ -56,7 +56,7 @@ def render(first: int):
                 X_new[i, j] = ti.random()
         else:
             for j in range(ndims):
-                dX = 0.1 * normaldist(ti.random())
+                dX = Sigma * normaldist(ti.random())
                 X_new[i, j] = (X_old[i, j] + dX) % 1
 
         L_new[i] = trace(RNGProxy(X_new, i))
@@ -66,7 +66,8 @@ def render(first: int):
         accept = min(1, AL_new / AL_old)
         if accept > 0:
             splat(V(X_new[i, 0], X_new[i, 1]), accept * L_new[i] / AL_new)
-        splat(V(X_old[i, 0], X_old[i, 1]), 1 - accept * L_old[i] / AL_old)
+        if not first:
+            splat(V(X_old[i, 0], X_old[i, 1]), (1 - accept) * L_old[i] / AL_old)
 
         if accept > ti.random():
             L_old[i] = L_new[i]
@@ -78,5 +79,5 @@ gui = ti.GUI()
 
 while gui.running and not gui.get_event(gui.ESCAPE):
     render(gui.frame <= 1)
-    gui.set_image(ti.imresize(film.to_numpy() / (count.to_numpy() + 1e-10), 512))
+    gui.set_image(ti.imresize(film.to_numpy() / (gui.frame + 1e-10), 512))
     gui.show()
