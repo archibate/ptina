@@ -15,6 +15,6 @@ class WorldLight(metaclass=Singleton):
     @ti.func
     def at(self, dir):
         if ti.static(hasattr(self, 'bgm')):
-            return self.bgm(*dir2tex(dir)).xyz**(1/2.2)
+            return self.bgm(*dir2tex(dir)).xyz
         else:
-            return 0.8
+            return 0.05

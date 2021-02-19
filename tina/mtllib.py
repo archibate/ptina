@@ -49,11 +49,11 @@ class MaterialPool(metaclass=Singleton):
         self.count[None] = len(materials)
 
     def get(self, mtlid, texcoord):
-        '''
+        #'''
         material = Disney(
                 self.basecolor.get(mtlid, texcoord, 0.8).xyz,
-                self.metallic.get(mtlid, texcoord, 1.0).x,
-                self.roughness.get(mtlid, texcoord, 1.0).x,
+                self.metallic.get(mtlid, texcoord, 0.0).x,
+                self.roughness.get(mtlid, texcoord, 0.4).x,
                 )
         '''
         material = Disney(
@@ -61,5 +61,5 @@ class MaterialPool(metaclass=Singleton):
                 Globals().metallic,
                 Globals().roughness,
                 )
-        #'''
+        '''
         return material

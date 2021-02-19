@@ -185,11 +185,9 @@ class Disney(namespace):
                 else:
                     Foh = schlickFresnel(cosoh)
                     Fs = lerp(Foh, self.speccolor, V3(1.0))
-                    G1i = 1 / (1 + smithLambda(cosi, alpha))
 
                     result.outdir = outdir
-                    partial = 1 / abs(cosh)
-                    #partial = 1 / (G1i * abs(cosoh) / abs(cosi))
+                    partial = 0.5 / (cosoh * smithGGX(coso, alpha))
                     result.pdf = Ds * Vavg(Fs) * partial
                     result.color = Fs * partial \
                             * (1 - self.transmission) / choice.pdf
