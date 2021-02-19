@@ -1,4 +1,9 @@
 from tina.sampling import *
+try:
+    # https://github.com/archibate/pysobol
+    from pysobol import Metropolis as NumpyMetropolis
+except ImportError:
+    please_install('pysobol')
 
 
 @ti.data_oriented
@@ -11,7 +16,7 @@ class MetropolisSampler:
         self.reset()
 
     def reset(self):
-        self.core = NumpySobol(self.nsamples, self.dim)
+        self.core = NumpyMetropolis(self.nsamples, self.dim)
         for i in range(self.skip):
             next(self.core)
 

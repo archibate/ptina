@@ -48,4 +48,3 @@ def binaryreverse(i):
 
 from tina.sampling.sobol import SobolSampler as DefaultSampler
 #from tina.sampling.random import RandomSampler as DefaultSampler
-#from tina.sampling.metropolis import MetropolisSampler as DefaultSampler
