@@ -17,4 +17,4 @@ class WorldLight(metaclass=Singleton):
         if ti.static(hasattr(self, 'bgm')):
             return self.bgm(*dir2tex(dir)).xyz**(1/2.2)
         else:
-            return 0.05
+            return 0.8

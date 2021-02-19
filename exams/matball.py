@@ -8,7 +8,7 @@ from tina.tools.globals import *
 
 ti.init(ti.cuda)
 init_things()
-Globals().add('metallic', 0, 0, 1)
+Globals().add('metallic', 1, 0, 1)
 Globals().add('roughness', 0, 0, 1)
 
 BruteEngine()

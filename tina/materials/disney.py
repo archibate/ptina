@@ -185,14 +185,20 @@ class Disney(namespace):
                 else:
                     Foh = schlickFresnel(cosoh)
                     Fs = lerp(Foh, self.speccolor, V3(1.0))
-                    Gs = smithGGX(cosi, alpha) * smithGGX(coso, alpha)
+                    G1i = 1 / (1 + smithLambda(cosi, alpha))
 
                     result.outdir = outdir
-                    partial = Gs * 2 * coso * lerp(alpha, 2 * cosi, 1.0)
+                    partial = 1 / abs(cosh)
+                    #partial = 1 / (G1i * abs(cosoh) / abs(cosi))
                     result.pdf = Ds * Vavg(Fs) * partial
                     result.color = Fs * partial \
                             * (1 - self.transmission) / choice.pdf
                     result.impo = 1
+
+            else:
+                result.pdf = 0.0
+                result.color = V3(0.0)
+                result.impo = 1
 
         else:
             outdir = tanspace(normal) @ spherical(ti.sqrt(samp.x), samp.y)
