@@ -36,6 +36,7 @@ M = 64
 film = np.zeros((M, M))
 count = np.zeros((M, M)) + 1e-10
 
+
 def splat(X, L):
     I = tuple(np.int32(np.floor(X * M)))
     film[I] += L

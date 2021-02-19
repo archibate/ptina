@@ -348,6 +348,25 @@ def truth(x):
     return (-1 if x != 0 else 0)
 
 
+# https://stackoverflow.com/questions/27229371/inverse-error-function-in-c
+@ti.pyfunc
+def erfinv(x):
+    sgn = -1 if x < 0 else 1
+
+    x = (1 - x) * (1 + x)
+    lnx = ti.log(x)
+
+    tt1 = 2 / (ti.pi * 0.147) + 0.5 * lnx
+    tt2 = 1 / 0.147 * lnx
+
+    return sgn * ti.sqrt(-tt1 + ti.sqrt(tt1**2 - tt2))
+
+
+@ti.pyfunc
+def normaldist(samp):
+    return np.sqrt(2) * erfinv(samp * 2 - 1)
+
+
 class namespace(dict):
     is_taichi_class = True
 
