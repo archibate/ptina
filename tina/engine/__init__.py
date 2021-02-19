@@ -4,6 +4,5 @@ from tina.light import *
 from tina.materials import *
 from tina.acceltree import *
 from tina.filmtable import *
-from tina.sampling import *
 from tina.mtllib import *
 from tina.stack import *

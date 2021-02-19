@@ -46,5 +46,15 @@ def binaryreverse(i):
     return j / k
 
 
-from tina.sampling.sobol import SobolSampler as DefaultSampler
-#from tina.sampling.random import RandomSampler as DefaultSampler
+@ti.data_oriented
+class RNGProxy:
+    def __init__(self, data, i):
+        self.data = data
+        self.i = ti.expr_init(i)
+        self.j = ti.expr_init(0)
+
+    @ti.func
+    def random(self):
+        ret = self.data[self.i, self.j]
+        self.j += 1
+        return ret

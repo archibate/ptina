@@ -19,6 +19,7 @@ gui.control = CamControl(gui)
 while gui.running:
     if gui.control.process_events():
         FilmTable().clear()
+        MLTEngine().reset()
     Camera().set_perspective(gui.control.get_perspective())
     MLTEngine().render()
     gui.set_image(FilmTable().get_image())
