@@ -2,8 +2,9 @@ from tina.common import *
 
 
 @ti.pyfunc
-def trace(X):
-    return (X[0] - 0.5)**2 + (X[1] - 0.34)**2
+def trace(rng):
+    x, y = rng.random(), rng.random()
+    return (x - 0.5)**2 + (y - 0.34)**2
 
 
 nres = V(64, 64)
@@ -24,39 +25,58 @@ nchains = 1024
 ndims = 2
 
 
-X_old = ti.Vector.field(ndims, float, nchains)
-X_new = ti.Vector.field(ndims, float, nchains)
+X_old = ti.field(float, (nchains, ndims))
+X_new = ti.field(float, (nchains, ndims))
 L_old = ti.field(float, nchains)
 L_new = ti.field(float, nchains)
 
 
-@ti.kernel
-def render():
-    for i in range(nchains):
-        X_new[i] = X_old[i]
-        if i == 0 or ti.random() < LSP:
-            X_new[i] = random2(ti)
-        else:
-            dX = 0.1 * normaldist(random2(ti))
-            X_new[i] = (X_old[i] + dX) % 1
+@ti.data_oriented
+class RNGProxy:
+    def __init__(self, data, i):
+        self.data = data
+        self.i = ti.expr_init(i)
+        self.j = ti.expr_init(0)
 
-        L_new[i] = trace(X_new[i])
+    @ti.func
+    def random(self):
+        ret = self.data[self.i, self.j]
+        self.j += 1
+        return ret
+
+
+@ti.kernel
+def render(first: int):
+    for i in range(nchains):
+        for j in range(ndims):
+            X_new[i, j] = X_old[i, j]
+
+        if first or ti.random() < LSP:
+            for j in range(ndims):
+                X_new[i, j] = ti.random()
+        else:
+            for j in range(ndims):
+                dX = 0.1 * normaldist(ti.random())
+                X_new[i, j] = (X_old[i, j] + dX) % 1
+
+        L_new[i] = trace(RNGProxy(X_new, i))
 
         AL_new = Vavg(L_new[i]) + 1e-10
         AL_old = Vavg(L_old[i]) + 1e-10
         accept = min(1, AL_new / AL_old)
         if accept > 0:
-            splat(X_new[i], accept * L_new[i] / AL_new)
-        splat(X_old[i], 1 - accept * L_old[i] / AL_old)
+            splat(V(X_new[i, 0], X_new[i, 1]), accept * L_new[i] / AL_new)
+        splat(V(X_old[i, 0], X_old[i, 1]), 1 - accept * L_old[i] / AL_old)
 
         if accept > ti.random():
             L_old[i] = L_new[i]
-            X_old[i] = X_new[i]
+            for j in range(ndims):
+                X_old[i, j] = X_new[i, j]
 
 
 gui = ti.GUI()
 
 while gui.running and not gui.get_event(gui.ESCAPE):
-    render()
+    render(gui.frame <= 1)
     gui.set_image(ti.imresize(film.to_numpy() / (count.to_numpy() + 1e-10), 512))
     gui.show()
