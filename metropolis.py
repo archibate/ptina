@@ -22,33 +22,36 @@ LSP = 0.1
 
 @ti.kernel
 def render():
-    X = random2(ti)
-    L = trace(X)
+    for _ in range(16):
+        X = V2(0.0)
+        L = 0.0
 
-    for i in range(M * M):
-        X_old = X
-        L_old = L
+        for i in range(M * M):
+            X_old = X
+            L_old = L
 
-        X_new = X
-        if ti.random() < LSP:
-            X_new = random2(ti)
-        else:
-            dX = 0.1 * normaldist(random2(ti))
-            X_new = (X + dX) % 1
+            X_new = X
+            if i == 0 or ti.random() < LSP:
+                X_new = random2(ti)
+            else:
+                dX = 0.1 * normaldist(random2(ti))
+                X_new = (X + dX) % 1
 
-        L_new = trace(X_new)
+            L_new = trace(X_new)
 
-        accept = min(1, Vavg(L_new) / Vavg(L_old))
-        if accept > 0:
-            splat(X_new, accept * L_new / Vavg(L_new))
-        splat(X_old, 1 - accept * L_old / Vavg(L_old))
+            AL_new = Vavg(L_new) + 1e-10
+            AL_old = Vavg(L_old) + 1e-10
+            accept = min(1, AL_new / AL_old)
+            if accept > 0:
+                splat(X_new, accept * L_new / AL_new)
+            splat(X_old, 1 - accept * L_old / AL_old)
 
-        if accept > ti.random():
-            L = L_new
-            X = X_new
-        else:
-            L = L_old
-            X = X_old
+            if accept > ti.random():
+                L = L_new
+                X = X_new
+            else:
+                L = L_old
+                X = X_old
 
 
 render()
