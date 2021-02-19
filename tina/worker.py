@@ -1,14 +1,16 @@
 from tina.things import *
+#from tina.engine.mltpath import MLTPathEngine as DefaultEngine
+from tina.engine.path import PathEngine as DefaultEngine
 
 
 def init():
     ti.init(ti.cuda)
     init_things()
-    PathEngine()
+    DefaultEngine()
 
 
 def render(aa=True):
-    PathEngine().render(aa)
+    DefaultEngine().render()
 
 
 def set_size(nx, ny):
@@ -19,7 +21,9 @@ def get_size():
     return FilmTable().nx, FilmTable().ny
 
 
-def clear(id=0):
+def clear():
+    if hasattr(DefaultEngine(), 'reset'):
+        DefaultEngine().reset()
     FilmTable().clear(id)
 
 
