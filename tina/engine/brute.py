@@ -11,13 +11,13 @@ def power_heuristic(a, b):
 @ti.data_oriented
 class BruteEngine(metaclass=Singleton):
     def __init__(self):
-        RNGSobol()
+        DefaultSampler()
 
     def get_rng(self, i, j):
-        return RNGSobol().get_proxy(wanghash2(i, j))
+        return DefaultSampler().get_proxy(wanghash2(i, j))
 
     def render(self):
-        RNGSobol().update()
+        DefaultSampler().update()
         self._render()
 
     @ti.func
