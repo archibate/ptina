@@ -1,5 +1,6 @@
 from tina.materials import *
 from tina.materials.microfacet import *
+from tina.tools.globals import *
 
 
 @ti.data_oriented
@@ -115,9 +116,12 @@ class Disney(namespace):
             etao = 1.0
         eta = etai / etao
 
+        cosi = indir.dot(normal)
+        Fi = schlickFresnel(cosi)
+        Fs = lerp(Fi, self.speccolor, V3(1))
+
         choice = Choice(samp.z)
-        specrate = lerp(self.transmission, lerp(self.metallic, 
-            self.specular * 0.08, 1.0), 1.0)
+        specrate = lerp(self.transmission, lerp(self.metallic, Vavg(Fs), 1.0), 1.0)
         coatrate = 0.04 * self.clearcoat
 
         specrate = lerp(specrate, 0.1, 1.0)
@@ -148,13 +152,14 @@ class Disney(namespace):
         elif choice(specrate):
             alpha = self.alpha
             halfdir = tanspace(normal) @ sample_GTR2(samp.x, samp.y, alpha)
+            #halfdir = tanspace(normal) @ sample_GTR2_vnor(indir, samp.x, samp.y, alpha)
             outdir = reflect(-indir, halfdir)
 
             cosi = dot_or_zero(indir, normal)
             coso = dot_or_zero(outdir, normal)
             cosh = dot_or_zero(halfdir, normal)
             cosoh = dot_or_zero(halfdir, outdir)
-            if cosoh > 0 and coso > 0:
+            if cosoh > 0 and coso > 0 and cosh > 0:
                 Ds = GTR2(cosh, alpha)
 
                 if choice(self.transmission):

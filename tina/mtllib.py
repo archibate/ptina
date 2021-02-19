@@ -1,5 +1,6 @@
 from tina.image import *
 from tina.materials.disney import *
+from tina.tools.globals import *
 
 
 @ti.data_oriented
@@ -48,9 +49,17 @@ class MaterialPool(metaclass=Singleton):
         self.count[None] = len(materials)
 
     def get(self, mtlid, texcoord):
+        #'''
         material = Disney(
                 self.basecolor.get(mtlid, texcoord, 0.8).xyz,
-                self.metallic.get(mtlid, texcoord, 0.0).x,
-                self.roughness.get(mtlid, texcoord, 0.3).x,
+                self.metallic.get(mtlid, texcoord, 1.0).x,
+                self.roughness.get(mtlid, texcoord, 1.0).x,
                 )
+        '''
+        material = Disney(
+                V3(1.0),
+                Globals().metallic,
+                Globals().roughness,
+                )
+        '''
         return material

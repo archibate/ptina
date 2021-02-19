@@ -32,7 +32,7 @@ def path_trace(r, rng):
             result += throughput * direct_li
 
         if hit.hit == 0:
-            result += throughput * 0.05
+            result += throughput * WorldLight().at(r.d)
             break
 
         avoid = hit.index
