@@ -2,6 +2,32 @@ import numpy as np
 import taichi as ti
 
 
+def erfinv(x):
+    sgn = np.sign(x)
+
+    x = (1 - x) * (1 + x)
+    lnx = np.log(x)
+
+    tt1 = 2 / (np.pi * 0.147) + 0.5 * lnx
+    tt2 = 1 / 0.147 * lnx
+
+    return sgn * np.sqrt(-tt1 + np.sqrt(tt1**2 - tt2))
+
+
+def normal(samp):
+    return np.sqrt(2) * erfinv(samp * 2 - 1)
+
+
+'''
+import matplotlib.pyplot as plt
+
+plt.hist(normal(np.random.rand(4096))
+plt.show()
+
+exit(0)
+'''
+
+
 def trace(X):
     return (X[0] - 0.5)**2 + (X[1] - 0.34)**2
 
@@ -33,6 +59,7 @@ for i in range(M * M * 8):
     if large:
         X_new = np.random.rand(N)
     else:
+        #dX = 0.1 * normal(np.random.rand(N))
         dX = np.random.normal(0, 0.1, N)
         X_new = (X + dX) % 1
 
