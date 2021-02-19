@@ -364,7 +364,7 @@ def erfinv(x):
 
 @ti.pyfunc
 def normaldist(samp):
-    return np.sqrt(2) * erfinv(samp * 2 - 1)
+    return ti.sqrt(2) * erfinv(samp * 2 - 1)
 
 
 class namespace(dict):
