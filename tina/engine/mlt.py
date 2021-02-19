@@ -12,7 +12,7 @@ class MLTEngine(metaclass=Singleton):
 
     def render(self):
         MetropolisSampler().update()
-        self._render(512**2)
+        self._render(2**16)
 
     @ti.func
     def splat(self, x, y, clr, impo):
