@@ -3,12 +3,9 @@ from tina.sampling.random import RandomSampler as MetropolisSampler
 
 
 @ti.data_oriented
-class MLTEngine(metaclass=Singleton):
+class MLTPathEngine(metaclass=Singleton):
     def __init__(self):
-        self.LSP = 0.3
-        self.Sigma = 0.1
-
-        self.nchains = nchains = 2**18
+        self.nchains = nchains = 2**16
         self.ndims = ndims = 32
 
         self.X_old = ti.field(float, (nchains, ndims))
@@ -16,7 +13,15 @@ class MLTEngine(metaclass=Singleton):
         self.L_old = ti.Vector.field(3, float, nchains)
         self.L_new = ti.Vector.field(3, float, nchains)
 
+        self.LSP = ti.field(float, ())
+        self.Sigma = ti.field(float, ())
+
         ti.materialize_callback(self.reset)
+
+        @ti.materialize_callback
+        def init_params():
+            self.LSP[None] = 0.04
+            self.Sigma[None] = 0.03
 
     @ti.kernel
     def reset(self):
@@ -28,9 +33,8 @@ class MLTEngine(metaclass=Singleton):
     @ti.kernel
     def _inc_film_count(self):
         for i, j in ti.ndrange(FilmTable().nx, FilmTable().ny):
-            #impo = 2.0 * (FilmTable().nx * FilmTable().ny) / self.nchains
-            impo = 2.0
-            FilmTable()[0, i, j] += V(0.0, 0.0, 0.0, impo)
+            impo = 2.0 * self.nchains / (FilmTable().nx * FilmTable().ny)
+            FilmTable()[0, i, j].w += impo
 
     @ti.func
     def splat(self, x, y, color):
@@ -46,12 +50,12 @@ class MLTEngine(metaclass=Singleton):
             for j in range(self.ndims):
                 self.X_new[i, j] = self.X_old[i, j]
 
-            if ti.random() < self.LSP:
+            if ti.random() < self.LSP[None]:
                 for j in range(self.ndims):
                     self.X_new[i, j] = ti.random()
             else:
                 for j in range(self.ndims):
-                    dX = self.Sigma * normaldist(ti.random())
+                    dX = self.Sigma[None] * normaldist(ti.random())
                     self.X_new[i, j] = (self.X_old[i, j] + dX) % 1
 
             rng = RNGProxy(self.X_new, i)

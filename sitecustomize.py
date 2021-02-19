@@ -41,4 +41,5 @@ sys.meta_path.insert(0, MetaPathFinder())
 
 
 if __name__ == '__main__':
-    from tina.things import *
+    import runpy
+    runpy.run_path(sys.argv[1])

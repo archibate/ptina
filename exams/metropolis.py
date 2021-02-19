@@ -1,12 +1,12 @@
 from tina.things import *
-from tina.engine.mlt import *
+from tina.engine.mltpath import *
 from tina.tools.control import CamControl
 from tina.tools.readgltf import readgltf
 
 
 ti.init(ti.cuda)
 init_things()
-MLTEngine()
+MLTPathEngine()
 FilmTable().set_size(512, 512)
 
 vertices, mtlids, materials = readgltf('assets/cornell.gltf')
