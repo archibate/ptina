@@ -45,7 +45,7 @@ class Choice(namespace):
         return ret
 
 
-from tina.materials.disney import Disney
+#from tina.materials.disney import Disney
 #from tina.materials.glossy import Glossy
 #from tina.materials.lambert import Lambert, Mirror
 #from tina.materials.phong import Phong

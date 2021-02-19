@@ -14,6 +14,14 @@ class LightPool(metaclass=Singleton):
         self.type = ti.field(int, count)
         self.count = ti.field(int, ())
 
+        @ti.materialize_callback
+        def default_light():
+            self.color[0] = [32, 32, 32]
+            self.pos[0] = [1, 2, 3]
+            self.size[0] = 0.5
+            self.type[0] = self.TYPES['POINT']
+            self.count[None] = 1
+
     def clear(self):
         self.count[None] = 0
 

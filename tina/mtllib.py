@@ -1,5 +1,5 @@
 from tina.image import *
-from tina.materials import *
+from tina.materials.disney import *
 
 
 @ti.data_oriented

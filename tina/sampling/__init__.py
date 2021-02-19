@@ -1,3 +1,4 @@
+from tina.common import *
 from tina.sampling.sobol import *
 
 
@@ -8,6 +9,12 @@ class RNGSobol(metaclass=Singleton):
 
     def get_proxy(self, i):
         return self.sobol.get_proxy(i)
+
+    def update(self):
+        return self.sobol.update()
+
+    def reset(self):
+        return self.sobol.reset()
 
 
 '''

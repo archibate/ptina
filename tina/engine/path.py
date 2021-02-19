@@ -1,12 +1,4 @@
-from tina.camera import *
-from tina.model import *
-from tina.light import *
-from tina.materials import *
-from tina.acceltree import *
-from tina.filmtable import *
-from tina.sampling import *
-from tina.mtllib import *
-from tina.stack import *
+from tina.engine import *
 
 
 @ti.func
@@ -19,13 +11,14 @@ def power_heuristic(a, b):
 @ti.data_oriented
 class PathEngine(metaclass=Singleton):
     def __init__(self):
-        self.rng = RNGSobol()
+        RNGSobol()
 
     def get_rng(self, i, j):
-        return self.rng.get_proxy(wanghash2(i, j))
+        #return RNGSobol().get_proxy(wanghash2(i, j))
+        return ti
 
-    def render(self, aa=True):
-        self.rng.update()
+    def render(self):
+        RNGSobol().update()
         self._render()
 
     @ti.func
@@ -43,26 +36,23 @@ class PathEngine(metaclass=Singleton):
             r.d = r.d.normalized()
             hit = BVHTree().intersect(r, avoid)
 
-            #'''
             lit = LightPool().hit(r)
             if lit.hit != 0 and (hit.hit == 0 or lit.dis < hit.depth):
                 mis = power_heuristic(last_brdf_pdf, lit.pdf)
                 direct_li = mis * lit.color
                 result += throughput * direct_li
-            #'''
 
             if hit.hit == 0:
-                result += throughput# * 0.05
+                result += throughput * 0.05
                 break
 
             avoid = hit.index
-            hitpos, normal, sign, material = self.get_geometries(hit, r)
+            hitpos, normal, sign, material = ModelPool().get_geometries(hit, r)
 
             sign = -r.d.dot(normal)
             if sign < 0:
                 normal = -normal
 
-            #'''
             li = LightPool().sample(hitpos, random3(rng))
             occ = BVHTree().intersect(Ray(hitpos, li.dir), avoid)
             if occ.hit == 0 or occ.depth > li.dis:
@@ -71,7 +61,6 @@ class PathEngine(metaclass=Singleton):
                 mis = power_heuristic(li.pdf, brdf_pdf)
                 direct_li = mis * li.color * brdf_clr * dot_or_zero(normal, li.dir)
                 result += throughput * direct_li
-            #'''
 
             brdf = material.bounce(normal, sign, -r.d, random3(rng))
             importance *= brdf.impo
@@ -95,43 +84,5 @@ class PathEngine(metaclass=Singleton):
 
             clr, impo = self.trace(ray, rng)
             FilmTable()[0, i, j] += V34(clr, impo)
-
-            Stack().unset()
-
-    @ti.func
-    def get_geometries(self, hit, r):
-        face = ModelPool().get_face(hit.index)
-        normal = face.normal(hit)
-        #normal = face.true_normal()
-        texcoord = face.texcoord(hit)
-        hitpos = r.o + hit.depth * r.d
-
-        sign = -r.d.dot(normal)
-        if sign < 0:
-            normal = -normal
-
-        material = MaterialPool().get(face.mtlid, texcoord)
-        return hitpos, normal, sign, material
-
-    @ti.kernel
-    def render_aov(self):
-        for i, j in ti.ndrange(FilmTable().nx, FilmTable().ny):
-            Stack().set(i * FilmTable().nx + j)
-
-            albedo = V3(0.0)
-            normal = V3(0.0)
-
-            dx, dy = random2(ti)
-            x = (i + dx) / FilmTable().nx * 2 - 1
-            y = (j + dy) / FilmTable().ny * 2 - 1
-            ray = Camera().generate(x, y)
-            hit = BVHTree().intersect(ray, -1)
-
-            if hit.hit == 1:
-                hitpos, normal, sign, material = self.get_geometries(hit, ray)
-                albedo = V3(1.0)
-
-            FilmTable()[1, i, j] += V34(albedo, 1.0)
-            FilmTable()[2, i, j] += V34(normal, 1.0)
 
             Stack().unset()
