@@ -27,10 +27,9 @@ class BruteEngine(metaclass=Singleton):
         avoid = -1
         depth = 0
         result = V3(0.0)
-        importance = 1.0
         throughput = V3(1.0)
 
-        while depth < 5 and Vany(throughput > eps) and importance > eps:
+        while depth < 5 and Vany(throughput > eps):
             depth += 1
 
             r.d = r.d.normalized()
@@ -52,12 +51,11 @@ class BruteEngine(metaclass=Singleton):
                 normal = -normal
 
             brdf = material.bounce(normal, sign, -r.d, random3(rng))
-            importance *= brdf.impo
             throughput *= brdf.color
             r.o = hitpos
             r.d = brdf.outdir
 
-        return result, importance
+        return result
 
     @ti.kernel
     def _render(self):
@@ -70,7 +68,7 @@ class BruteEngine(metaclass=Singleton):
             y = (j + dy) / FilmTable().ny * 2 - 1
             ray = Camera().generate(x, y)
 
-            clr, impo = self.trace(ray, rng)
-            FilmTable()[0, i, j] += V34(clr, impo)
+            clr = self.trace(ray, rng)
+            FilmTable()[0, i, j] += V34(clr, 1.0)
 
             Stack().unset()

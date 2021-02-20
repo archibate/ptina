@@ -38,9 +38,8 @@ class MLTPathEngine(metaclass=Singleton):
 
     @ti.func
     def splat(self, x, y, color):
-        impo = 0.0
         i, j = ifloor(V(x * FilmTable().nx, y * FilmTable().ny))
-        FilmTable()[0, i, j] += V34(color, impo)
+        FilmTable()[0, i, j] += V34(color, 0.0)
 
     @ti.kernel
     def _render(self):
@@ -60,8 +59,8 @@ class MLTPathEngine(metaclass=Singleton):
 
             rng = RNGProxy(self.X_new, i)
             ray = Camera().generate(rng.random() * 2 - 1, rng.random() * 2 - 1)
-            clr, impo = path_trace(ray, rng)
-            self.L_new[i] = clr * impo
+            clr = path_trace(ray, rng)
+            self.L_new[i] = clr
 
             AL_new = Vavg(self.L_new[i]) + 1e-10
             AL_old = Vavg(self.L_old[i]) + 1e-10
