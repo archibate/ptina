@@ -61,6 +61,5 @@ class MaterialPool(metaclass=Singleton):
                 Globals().metallic,
                 Globals().roughness,
                 )
-        material.clearcoat = Globals().clearcoat
         #'''
         return material

@@ -140,11 +140,10 @@ class Disney(namespace):
             if cosoh > 0:
                 Dr = GTR1(cosh, alpha)
                 Foh = schlickFresnel(cosoh)
-                Gr = smithGGX(cosi, 0.25) * smithGGX(coso, 0.25)
                 Fr = lerp(Foh, 0.04, 1.0)
 
                 result.outdir = outdir
-                partial = self.clearcoat * Fr * 0.5 / (cosoh * smithGGX(coso, alpha))
+                partial = self.clearcoat * Fr * coso / cosoh
                 result.pdf = Dr * partial
                 result.color = partial / choice.pdf
 

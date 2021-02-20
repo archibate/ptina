@@ -18,7 +18,7 @@ def path_trace(r, rng):
     throughput = V3(1.0)
     last_brdf_pdf = 0.0
 
-    while depth < 5 and Vany(throughput > eps):
+    while depth < 5 and Vany(throughput > 0) and Vany(r.d != 0):
         depth += 1
 
         r.d = r.d.normalized()
