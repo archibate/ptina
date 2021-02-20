@@ -10,6 +10,7 @@ ti.init(ti.opengl)
 init_things()
 Globals().add('metallic', 1, 0, 1)
 Globals().add('roughness', 0, 0, 1)
+Globals().add('clearcoat', 0, 0, 1)
 
 BruteEngine()
 FilmTable().set_size(256, 256)

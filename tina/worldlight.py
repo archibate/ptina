@@ -4,8 +4,6 @@ from tina.image import *
 @ti.data_oriented
 class WorldLight(metaclass=Singleton):
     def __init__(self):
-        ...
-
         '''
         @ti.materialize_callback
         def load_bgm():

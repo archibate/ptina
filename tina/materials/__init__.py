@@ -4,15 +4,14 @@ from tina.common import *
 @ti.data_oriented
 class BSDFSample(namespace):
     @ti.func
-    def __init__(self, outdir, pdf, color, impo=1.0):
+    def __init__(self, outdir, pdf, color):
         self.outdir = outdir
         self.pdf = pdf
         self.color = color
-        self.impo = impo
 
     @classmethod
     def invalid(cls):
-        return cls(V3(0.0), 0.0, V3(0.0), 0.0)
+        return cls(V3(0.0), 0.0, V3(0.0))
 
 
 @ti.data_oriented

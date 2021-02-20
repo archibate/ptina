@@ -144,10 +144,13 @@ class Disney(namespace):
                 Fr = lerp(Foh, 0.04, 1.0)
 
                 result.outdir = outdir
-                partial = self.clearcoat * Gr * Fr * coso * cosi
+                partial = self.clearcoat * Fr * 0.5 / (cosoh * smithGGX(coso, alpha))
                 result.pdf = Dr * partial
                 result.color = partial / choice.pdf
-                result.impo = 1
+
+            else:
+                result.pdf = 0.0
+                result.color = V3(0.0)
 
         elif choice(specrate):
             alpha = self.alpha
@@ -171,7 +174,6 @@ class Disney(namespace):
                         result.pdf = Ds * fdf
                         result.color = self.basecolor * \
                                 fdf * self.transmission / choice.pdf
-                        result.impo = 1
 
                     else:
                         has_r, outdir = refract(-indir, halfdir, eta)
@@ -180,7 +182,6 @@ class Disney(namespace):
                             result.pdf = Ds * (1 - fdf)
                             result.color = self.basecolor * (1 - fdf) \
                                     * self.transmission / choice.pdf
-                            result.impo = 1
 
                 else:
                     Foh = schlickFresnel(cosoh)
@@ -191,12 +192,10 @@ class Disney(namespace):
                     result.pdf = Ds * Vavg(Fs) * partial
                     result.color = Fs * partial \
                             * (1 - self.transmission) / choice.pdf
-                    result.impo = 1
 
             else:
                 result.pdf = 0.0
                 result.color = V3(0.0)
-                result.impo = 1
 
         else:
             outdir = tanspace(normal) @ spherical(ti.sqrt(samp.x), samp.y)
@@ -226,6 +225,5 @@ class Disney(namespace):
             result.pdf = 1 / ti.pi
             result.color = diffuse * ti.pi * \
                     (1 - self.metallic) * (1 - self.transmission) / choice.pdf
-            result.impo = 1
 
         return result
