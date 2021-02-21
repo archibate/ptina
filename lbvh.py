@@ -29,7 +29,7 @@ def clz(x):
 
 
 @ti.pyfunc
-def findSplit(mc, l, r):
+def findSplit(l, r):
     m = 0
 
     lc, rc = mc[l], mc[r]
@@ -60,7 +60,7 @@ def findSplit(mc, l, r):
 
 
 @ti.pyfunc
-def determineRange(self, n, i):
+def determineRange(n, i):
     l, r = 0, n - 1
 
     if i != 0:
@@ -96,7 +96,7 @@ def determineRange(self, n, i):
                 itmp = i + d * lmax
                 delta = -1
                 if 0 <= itmp < n:
-                    delta = clz(ic, mc[itmp])
+                    delta = clz(ic ^ mc[itmp])
             s = 0
             t = lmax >> 1
             while t > 0:
@@ -115,33 +115,63 @@ def determineRange(self, n, i):
     return l, r
 
 
-@ti.pyfunc
-def genHierarchy(mc, id, n):
-    leaf = malloc(n)
-    internal = malloc(n - 1)
+n = 4
+child = ti.Vector.field(2, int, n - 1)  # [0] for childA, [1] for childB
+leaf = ti.field(int, n)                 # primitive ids for leaf nodes
 
-    for i in range(n):
-        leaf[i].obj = id[i]
-
-    for i in range(n - 1):
-        l, r = determineRange(mc, n, i)
-        split = findSplit(mc, l, r)
-
-        lhs = split
-        if split != l:
-            lhs += n
-
-        rhs = split + 1
-        if split + 1 != r:
-            rhs += n
-
-        internal[i].lhs = lhs
-        internal[i].rhs = rhs
+center = ti.Vector.field(3, float, n)   # input primitive center coordinates
+mc = ti.field(int, n)                   # 3d morton codes for primitives
+id = ti.field(int, n)                   # primitive ids of corr. sorted mc
 
 
 @ti.kernel
-def test():
-    x = 1023
-    print(expandBits(x))
+def genMortonCodes():
+    for i in range(n):
+        mc[i] = morton3D(center[i])
+        id[i] = i
 
-test()
+
+def sortMortonCodes():
+    mc_ = mc.to_numpy()
+    id_ = id.to_numpy()
+    arg = np.argsort(mc_)
+    mc_ = mc_[arg]
+    id_ = id_[arg]
+    mc.from_numpy(mc_)
+    id.from_numpy(id_)
+
+
+@ti.kernel
+def genHierarchy():
+    for i in range(n):
+        leaf[i] = id[i]
+
+    for i in range(n - 1):
+        l, r = determineRange(n, i)
+        split = findSplit(l, r)
+
+        lhs = split
+        if lhs != l:
+            lhs += n  # move from leaf -> internal
+
+        rhs = split + 1
+        if rhs != r:
+            rhs += n  # move from leaf -> internal
+
+        child[n + i][0] = lhs
+        child[n + i][1] = rhs
+
+
+center.from_numpy(np.array([
+    [120, 480, 256],
+    [640, 512, 64],
+    [455, 512, 32],
+    [256, 12, 768],
+    ]))
+genMortonCodes()
+sortMortonCodes()
+genHierarchy()
+
+print(leaf.to_numpy())
+print(child.to_numpy())
+exit(1)
