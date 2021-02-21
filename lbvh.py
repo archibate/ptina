@@ -207,8 +207,6 @@ class LinearBVH:
             l, r = self.determineRange(n, i)
             split = self.findSplit(l, r)
 
-            print(l, r, split)
-
             lhs = split
             if lhs != l:
                 lhs += n
@@ -239,10 +237,12 @@ class LinearBVH:
 
 
     def genAABBs(self):
+        count = 1
         self.clearAABBStates()
-        print('[Tina] start generating AABB...')
         while not self.genAABBSubstep():
-            print('[Tina] continue generating AABB...')
+            count += 1
+        print('[Tina] LBVH tree depth', count, '>=',
+                int(np.ceil(np.log2(self.n[None]))))
 
 
     @ti.kernel
@@ -288,9 +288,9 @@ if __name__ == '__main__':
     bvh.genHierarchy()
     bvh.genAABBs()
 
-    n = bvh.n[None]; print(n)
-    print(bvh.leaf.to_numpy()[:n])
-    print(bvh.child.to_numpy()[:n - 1])
-    print(bvh.bmin.to_numpy()[:n - 1])
-    print(bvh.bmax.to_numpy()[:n - 1])
+    #n = bvh.n[None]; print(n)
+    #print(bvh.leaf.to_numpy()[:n])
+    #print(bvh.child.to_numpy()[:n - 1])
+    #print(bvh.bmin.to_numpy()[:n - 1])
+    #print(bvh.bmax.to_numpy()[:n - 1])
     exit(1)
