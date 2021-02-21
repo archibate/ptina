@@ -4,7 +4,7 @@ from tina.tree import *
 from tina.image import *
 from tina.model import *
 from tina.light import *
-from tina.envlight import *
+from tina.light.world import *
 from tina.mtllib import *
 from tina.filmtable import *
 
