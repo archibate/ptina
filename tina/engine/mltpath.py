@@ -20,8 +20,8 @@ class MLTPathEngine(metaclass=Singleton):
 
         @ti.materialize_callback
         def init_params():
-            self.LSP[None] = 0.04
-            self.Sigma[None] = 0.03
+            self.LSP[None] = 0.1
+            self.Sigma[None] = 0.05
 
     @ti.kernel
     def reset(self):
@@ -32,22 +32,23 @@ class MLTPathEngine(metaclass=Singleton):
 
     @ti.kernel
     def _inc_film_count(self):
+        '''
         for i, j in ti.ndrange(FilmTable().nx, FilmTable().ny):
-            impo = 2.0 * self.nchains / (FilmTable().nx * FilmTable().ny)
+            #impo = 2.0 * self.nchains / (FilmTable().nx * FilmTable().ny)
+            impo = 0.0
             FilmTable()[0, i, j].w += impo
+        '''
 
     @ti.func
     def splat(self, x, y, color):
+        impo = 1.0
         i, j = ifloor(V(x * FilmTable().nx, y * FilmTable().ny))
-        FilmTable()[0, i, j] += V34(color, 0.0)
+        FilmTable()[0, i, j] += V34(color, impo)
 
     @ti.kernel
     def _render(self):
         for i in range(self.nchains):
             Stack().set(i)
-
-            for j in range(self.ndims):
-                self.X_new[i, j] = self.X_old[i, j]
 
             if ti.random() < self.LSP[None]:
                 for j in range(self.ndims):
@@ -62,16 +63,12 @@ class MLTPathEngine(metaclass=Singleton):
             clr = path_trace(ray, rng)
             self.L_new[i] = clr
 
-            AL_new = Vavg(self.L_new[i]) + 1e-10
-            AL_old = Vavg(self.L_old[i]) + 1e-10
+            AL_new = (self.L_new[i]).y + 1e-10
+            AL_old = (self.L_old[i]).y + 1e-10
             accept = min(1, AL_new / AL_old)
-            if accept > 0:
-                self.splat(self.X_new[i, 0], self.X_new[i, 1],
-                        accept * self.L_new[i] / AL_new)
-            self.splat(self.X_old[i, 0], self.X_old[i, 1],
-                    (1 - accept) * self.L_old[i] / AL_old)
+            self.splat(self.X_new[i, 0], self.X_new[i, 1], self.L_new[i])
 
-            if accept > ti.random():
+            if ti.random() < accept:
                 self.L_old[i] = self.L_new[i]
                 for j in range(self.ndims):
                     self.X_old[i, j] = self.X_new[i, j]
