@@ -1,5 +1,6 @@
 from tina.common import *
 from tina.model import *
+from tina.stack import *
 
 
 @ti.pyfunc
@@ -278,6 +279,55 @@ class LinearBVH:
         return all_ready
 
 
+    def build(self):
+        build.genMortonCodes()
+        build.sortMortonCodes()
+        build.genHierarchy()
+        build.genAABBs()
+
+
+    @ti.func
+    def element_intersect(self, index, ray):
+        return ModelPool().get_face(index).intersect(ray)
+
+
+    @ti.func
+    def intersect(self, ray, avoid):
+        n = self.n[None]
+
+        stack = Stack().get()
+        stack.clear()
+        stack.push(n)
+
+        ret = namespace(hit=0, depth=inf, index=-1, uv=V(0., 0.))
+
+        ntimes = 0
+        while ntimes < n and stack.size() != 0:
+            curr = stack.pop()
+
+            if curr < n:
+                index = self.leaf[curr]
+                if index != avoid:
+                    hit = self.element_intersect(index, ray)
+                    if hit.hit != 0 and hit.depth < ret.depth:
+                        ret.depth = hit.depth
+                        ret.index = index
+                        ret.uv = hit.uv
+                        ret.hit = 1
+                continue
+
+            i = curr - n
+            bbox = Box(self.bmin[i], self.bmax[i])
+            if bbox.intersect(ray).hit == 0:
+                continue
+
+            ntimes += 1
+            stack.push(self.child[i][0])
+            stack.push(self.child[i][1])
+
+        return ret
+
+
 if __name__ == '__main__':
     ModelPool()
     bvh = LinearBVH(2**16)
@@ -288,9 +338,9 @@ if __name__ == '__main__':
     bvh.genHierarchy()
     bvh.genAABBs()
 
-    #n = bvh.n[None]; print(n)
-    #print(bvh.leaf.to_numpy()[:n])
-    #print(bvh.child.to_numpy()[:n - 1])
-    #print(bvh.bmin.to_numpy()[:n - 1])
-    #print(bvh.bmax.to_numpy()[:n - 1])
+    n = bvh.n[None]; print(n)
+    print(bvh.leaf.to_numpy()[:n])
+    print(bvh.child.to_numpy()[:n - 1])
+    print(bvh.bmin.to_numpy()[:n - 1])
+    print(bvh.bmax.to_numpy()[:n - 1])
     exit(1)
