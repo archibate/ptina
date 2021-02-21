@@ -1,4 +1,5 @@
 from tina.common import *
+from tina.model import *
 
 
 @ti.pyfunc
@@ -12,7 +13,7 @@ def expandBits(v):
 
 @ti.pyfunc
 def morton3D(v):
-    w = expandBits(clamp(int(v), 0, 1023))
+    w = expandBits(clamp(ifloor(v * 1024), 0, 1023))
     return w.dot(V(4, 2, 1))
 
 
@@ -30,14 +31,14 @@ def clz(x):
 
 @ti.data_oriented
 class LinearBVH:
-    def __init__(self, n):
-        self.n = n
-
+    def __init__(self, n=2**22):  # 32 MB
         self.child = ti.Vector.field(2, int, n)
         self.leaf = ti.field(int, n)
 
         self.mc = ti.field(int, n)
         self.id = ti.field(int, n)
+
+        self.n = ti.field(int, ())
 
 
     @ti.func
@@ -127,34 +128,61 @@ class LinearBVH:
         return l, r
 
 
-    @ti.pyfunc
-    def get_center(self, i):
-        return random3(ti)
+    @ti.func
+    def getCenter(self, i):
+        face = ModelPool().get_face(i)
+        v0, v1, v2 = face.v0, face.v1, face.v2
+        center = (v0 + v1 + v2) / 3
+        return center
 
 
     @ti.kernel
     def genMortonCodes(self):
-        n = self.n
+        n = ModelPool().nfaces[None]
+        self.n[None] = n
+
+        bmax = V3(-inf)
+        bmin = V3(inf)
+        for i in range(n):
+            center = self.getCenter(i)
+            ti.atomic_max(bmax, center)
+            ti.atomic_min(bmin, center)
 
         for i in range(n):
-            center = self.get_center(i)
-            self.mc[i] = morton3D(center)
+            center = self.getCenter(i)
+            coord = (center - bmin) / (bmax - bmin)
+            self.mc[i] = morton3D(coord)
             self.id[i] = i
 
 
+    @ti.kernel
+    def exportMortonCodes(self, arr: ti.ext_arr()):
+        n = self.n[None]
+
+        for i in range(n):
+            arr[i, 0] = self.mc[i]
+            arr[i, 1] = self.id[i]
+
+
+    @ti.kernel
+    def importMortonCodes(self, arr: ti.ext_arr()):
+        n = self.n[None]
+
+        for i in range(n):
+            self.mc[i] = arr[i, 0]
+            self.id[i] = arr[i, 1]
+
+
     def sortMortonCodes(self):
-        self.mc_ = self.mc.to_numpy()
-        self.id_ = self.id.to_numpy()
-        arg = np.argsort(self.mc_)
-        self.mc_ = self.mc_[arg]
-        self.id_ = self.id_[arg]
-        self.mc.from_numpy(self.mc_)
-        self.id.from_numpy(self.id_)
+        arr = np.empty((self.n[None], 2))
+        self.exportMortonCodes(arr)
+        sort = np.argsort(arr[:, 0])
+        self.importMortonCodes(arr[sort])
 
 
     @ti.kernel
     def genHierarchy(self):
-        n = self.n
+        n = self.n[None]
 
         for i in range(n):
             self.leaf[i] = self.id[i]
@@ -171,11 +199,13 @@ class LinearBVH:
             if rhs != r:
                 rhs += n
 
-            self.child[n + i][0] = lhs
-            self.child[n + i][1] = rhs
+            self.child[i][0] = lhs
+            self.child[i][1] = rhs
 
 
-bvh = LinearBVH(4)
+ModelPool()
+bvh = LinearBVH()
+ModelPool().load('assets/cube.obj')
 bvh.genMortonCodes()
 bvh.sortMortonCodes()
 bvh.genHierarchy()
