@@ -233,31 +233,6 @@ def dir2tex(dir):
     return V(s, t)
 
 
-@ti.pyfunc
-def gammize(x):
-    return x**(1/2.2)
-
-
-@ti.pyfunc
-def ungammize(x):
-    return x**2.2
-
-
-@ti.func
-def mapplypos(mat, pos, wei):
-    return V43(mat @ V34(pos, 1.0))
-
-
-@ti.func
-def mapplydir(mat, pos, wei):
-    return V43(mat @ V34(pos, 0.0))
-
-
-@ti.func
-def mapplynrm(mat, pos, wei):
-    return (mat @ V34(pos, 0.0)).xyz.normalized()
-
-
 @ti.func
 def M33(mat):
     return ti.Matrix([[mat[i, j] for j in range(3)] for i in range(3)])

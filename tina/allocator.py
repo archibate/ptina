@@ -2,8 +2,6 @@
 dynamic memory allocator, mainly used for textures
 '''
 
-from tina.common import *
-
 
 class MemoryAllocator:
     def __init__(self, size):

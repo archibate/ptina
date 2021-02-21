@@ -2,11 +2,8 @@
 dynamically loading textures into Taichi memory
 '''
 
+from tina.common import *
 from tina.allocator import *
-
-
-def NoToneMap(x):
-    return x
 
 
 @ti.data_oriented
