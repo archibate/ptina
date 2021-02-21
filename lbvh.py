@@ -33,8 +33,11 @@ def clz(x):
 @ti.data_oriented
 class LinearBVH:
     def __init__(self, n=2**22):  # 32 MB
+
         self.bmin = ti.Vector.field(3, float, n)
         self.bmax = ti.Vector.field(3, float, n)
+        self.bready = ti.field(int, n)
+
         self.child = ti.Vector.field(2, int, n)
         self.leaf = ti.field(int, n)
 
@@ -219,58 +222,75 @@ class LinearBVH:
 
     @ti.func
     def getNodeBoundingBox(self, n, i):
+        bready = 0
         bmin, bmax = V3(0.0), V3(0.0)
+
         if i < n:  # leaf node
             bmin, bmax = self.getBoundingBox(self.leaf[i])
+            bready = 1
+
         else:      # internal node
             i -= n
             bmin, bmax = self.bmin[i], self.bmax[i]
-        return bmin, bmax
+            bready = self.bready[i]
+
+        return bready, bmin, bmax
+
+
+    def genAABBs(self):
+        self.clearAABBStates()
+        print('start generating AABB...')
+        while not self.genAABBSubstep():
+            print('continue generating AABB...')
 
 
     @ti.kernel
-    def genBoundingBoxes(self):
+    def clearAABBStates(self):
         n = self.n[None]
 
         for i in range(n):
-            Stack().set(i)
+            self.bready[i] = 0
 
-            stack = Stack().get()
 
-            stack.clear()
-            stack.push(self.child[i][0])
-            stack.push(self.child[i][1])
+    @ti.kernel
+    def genAABBSubstep(self) -> int:
+        n = self.n[None]
 
-            bmin, bmax = V3(inf), V3(-inf)
+        for i in range(n - 1):
+            if self.bready[i]:
+                continue
 
-            ntimes = 0
-            while ntimes < n and stack.size() != 0:
-                curr = stack.pop()
+            bready1, bmin1, bmax1 = self.getNodeBoundingBox(n, self.child[i][0])
+            bready2, bmin2, bmax2 = self.getNodeBoundingBox(n, self.child[i][1])
 
-                bmin1, bmax1 = self.getNodeBoundingBox(n, curr)
-                bmin, bmax = min(bmin, bmin1), max(bmax, bmax1)
+            if bready1 == 1 and bready2 == 1:
+                bmin, bmax = min(bmin1, bmin2), max(bmax1, bmax2)
 
-                if i >= n:  # internal node
-                    j = curr - n
-                    stack.push(self.child[j][0])
-                    stack.push(self.child[j][1])
+                self.bmin[i], self.bmax[i] = bmin, bmax
+                self.bready[i] = 1
+                print('ready', i)
 
-                ntimes += 1
+            else:
+                print(i, 'depends', bready1, bready2)
 
-            self.bmin[i], self.bmax[i] = bmin, bmax
+        all_ready = 1
+        for i in range(n - 1):
+            if self.bready[i] == 0:
+                print(i, 'not ready')
+                all_ready = 0
 
-            Stack().unset()
+        return all_ready
 
 
 Stack()
 ModelPool()
 bvh = LinearBVH(2**16)
 
-ModelPool().load('assets/monkey.obj')
+ModelPool().load('assets/cube.obj')
 bvh.genMortonCodes()
 bvh.sortMortonCodes()
 bvh.genHierarchy()
-bvh.genBoundingBoxes()
+bvh.genAABBs()
 
 print(bvh.leaf.to_numpy())
 print(bvh.child.to_numpy())
