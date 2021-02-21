@@ -8,7 +8,7 @@ from tina.stack import *
 
 
 @ti.data_oriented
-class _BVHTree:
+class MiddleBVH:
     def __init__(self, size):
         self.size = size
         self.dir = ti.field(int, size)
@@ -167,7 +167,7 @@ class _BVHTree:
 @ti.data_oriented
 class BVHTree(metaclass=Singleton):
     def __init__(self, size=2**20):
-        self.core = _BVHTree(size)
+        self.core = MiddleBVH(size)
 
     @ti.kernel
     def _dump_face_bboxes(self, nfaces: int, pmin: ti.ext_arr(), pmax: ti.ext_arr()):

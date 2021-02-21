@@ -39,7 +39,6 @@ def clz(x):
 @ti.data_oriented
 class LinearBVH:
     def __init__(self, n=2**22):  # 32 MB
-
         self.bmin = ti.Vector.field(3, float, n)
         self.bmax = ti.Vector.field(3, float, n)
         self.bready = ti.field(int, n)
@@ -287,10 +286,10 @@ class LinearBVH:
 
     def build(self):
         print('[Tina] building LBVH tree...')
-        build.genMortonCodes()
-        build.sortMortonCodes()
-        build.genHierarchy()
-        build.genAABBs()
+        self.genMortonCodes()
+        self.sortMortonCodes()
+        self.genHierarchy()
+        self.genAABBs()
         print('[Tina] building LBVH tree done')
 
 
@@ -334,6 +333,11 @@ class LinearBVH:
             stack.push(self.child[i][1])
 
         return ret
+
+
+@ti.data_oriented
+class BVHTree(LinearBVH, metaclass=Singleton):
+    pass
 
 
 if __name__ == '__main__':
