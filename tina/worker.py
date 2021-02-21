@@ -3,12 +3,12 @@ unified API interface for running in a separate worker thread
 '''
 
 from tina.things import *
-from tina.engine.mltpath import MLTPathEngine as DefaultEngine
-#from tina.engine.path import PathEngine as DefaultEngine
+#from tina.engine.mltpath import MLTPathEngine as DefaultEngine
+from tina.engine.path import PathEngine as DefaultEngine
 
 
 def init():
-    ti.init(ti.cuda)
+    ti.init(ti.cuda, device_memory_fraction=0.9)
     init_things()
     DefaultEngine()
 
