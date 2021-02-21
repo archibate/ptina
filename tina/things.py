@@ -1,6 +1,6 @@
 from tina.stack import *
 from tina.camera import *
-from tina.acceltree import *
+from tina.tree import *
 from tina.image import *
 from tina.model import *
 from tina.light import *

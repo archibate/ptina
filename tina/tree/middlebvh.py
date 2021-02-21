@@ -1,5 +1,5 @@
 '''
-BVH tree implementation for ray tracing acceleration
+middle-point-split BVH tree implementation
 '''
 
 from tina.model import *
@@ -25,10 +25,10 @@ class _BVHTree:
         data.min = self.min.to_numpy()
         data.max = self.max.to_numpy()
         data.ind = self.ind.to_numpy()
-        print('[Tina] building tree...')
+        print('[Tina] building middle-BVH tree...')
         self._build(data, pmin, pmax, np.arange(len(pmin)), 1)
         self._build_from_data(data.dir, data.min, data.max, data.ind)
-        print('[Tina] building tree done')
+        print('[Tina] building middle-BVH tree done')
 
     @ti.kernel
     def _build_from_data(self,

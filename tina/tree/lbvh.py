@@ -1,3 +1,9 @@
+'''
+linear BVH tree implementation that can be constructed in real-time
+
+https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/
+'''
+
 from tina.common import *
 from tina.model import *
 from tina.stack import *
@@ -280,10 +286,12 @@ class LinearBVH:
 
 
     def build(self):
+        print('[Tina] building LBVH tree...')
         build.genMortonCodes()
         build.sortMortonCodes()
         build.genHierarchy()
         build.genAABBs()
+        print('[Tina] building LBVH tree done')
 
 
     @ti.func
