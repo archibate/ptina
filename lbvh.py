@@ -1,6 +1,5 @@
 from tina.common import *
 from tina.model import *
-from tina.stack import *
 
 
 @ti.pyfunc
@@ -91,7 +90,7 @@ class LinearBVH:
                 l = i
                 while i < n - 1:
                     i += 1
-                    if i > n - 1:
+                    if i >= n - 1:
                         break
                     if self.mc[i] != self.mc[i + 1]:
                         break
@@ -107,8 +106,8 @@ class LinearBVH:
                 delta_min = min(ld, rd)
                 lmax = 2
                 delta = -1
-                itmp = i * d * lmax
-                if 0 < itmp and itmp < n:
+                itmp = i + d * lmax
+                if 0 <= itmp < n:
                     delta = clz(ic ^ self.mc[itmp])
                 while delta > delta_min:
                     lmax <<= 1
@@ -121,7 +120,7 @@ class LinearBVH:
                 while t > 0:
                     itmp = i + (s + t) * d
                     delta = -1
-                    if 0 <= itmp and itmp < n:
+                    if 0 <= itmp < n:
                         delta = clz(ic ^ self.mc[itmp])
                     if delta > delta_min:
                         s += t
@@ -208,6 +207,8 @@ class LinearBVH:
             l, r = self.determineRange(n, i)
             split = self.findSplit(l, r)
 
+            print(l, r, split)
+
             lhs = split
             if lhs != l:
                 lhs += n
@@ -239,9 +240,9 @@ class LinearBVH:
 
     def genAABBs(self):
         self.clearAABBStates()
-        print('start generating AABB...')
+        print('[Tina] start generating AABB...')
         while not self.genAABBSubstep():
-            print('continue generating AABB...')
+            print('[Tina] continue generating AABB...')
 
 
     @ti.kernel
@@ -268,32 +269,28 @@ class LinearBVH:
 
                 self.bmin[i], self.bmax[i] = bmin, bmax
                 self.bready[i] = 1
-                print('ready', i)
-
-            else:
-                print(i, 'depends', bready1, bready2)
 
         all_ready = 1
         for i in range(n - 1):
             if self.bready[i] == 0:
-                print(i, 'not ready')
                 all_ready = 0
 
         return all_ready
 
 
-Stack()
-ModelPool()
-bvh = LinearBVH(2**16)
+if __name__ == '__main__':
+    ModelPool()
+    bvh = LinearBVH(2**16)
 
-ModelPool().load('assets/cube.obj')
-bvh.genMortonCodes()
-bvh.sortMortonCodes()
-bvh.genHierarchy()
-bvh.genAABBs()
+    ModelPool().load('assets/sphere.obj')
+    bvh.genMortonCodes()
+    bvh.sortMortonCodes()
+    bvh.genHierarchy()
+    bvh.genAABBs()
 
-print(bvh.leaf.to_numpy())
-print(bvh.child.to_numpy())
-print(bvh.bmin.to_numpy())
-print(bvh.bmax.to_numpy())
-exit(1)
+    n = bvh.n[None]; print(n)
+    print(bvh.leaf.to_numpy()[:n])
+    print(bvh.child.to_numpy()[:n - 1])
+    print(bvh.bmin.to_numpy()[:n - 1])
+    print(bvh.bmax.to_numpy()[:n - 1])
+    exit(1)
