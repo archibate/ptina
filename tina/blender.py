@@ -90,6 +90,13 @@ def blender_get_object_mesh(object, depsgraph=None):
     return verts, norms, coors
 
 
+def blender_get_image_pixels(image):
+    arr = np.array(image.pixels)
+    arr = arr.reshape((image.size[1], image.size[0], image.channels))
+    arr = arr.swapaxes(0, 1)
+    return arr
+
+
 class TinaLightPanel(bpy.types.Panel):
     '''Tina light options'''
 
@@ -110,23 +117,6 @@ class TinaLightPanel(bpy.types.Panel):
                 layout.prop(object.data, 'shadow_soft_size', text='Radius')
             elif object.data.type == 'AREA':
                 layout.prop(object.data, 'size')
-
-
-class TinaWorldPanel(bpy.types.Panel):
-    '''Tina world options'''
-
-    bl_label = 'Tina World'
-    bl_idname = 'WORLD_PT_tina'
-    bl_space_type = 'PROPERTIES'
-    bl_region_type = 'WINDOW'
-    bl_context = 'world'
-
-    def draw(self, context):
-        layout = self.layout
-        world = context.scene.world
-
-        layout.prop(world, 'tina_color')
-        layout.prop(world, 'tina_strength')
 
 
 class TinaRenderPanel(bpy.types.Panel):
@@ -162,12 +152,10 @@ class TinaMaterialPanel(bpy.types.Panel):
         if not len(materials):
             return
 
-        options = materials[0].tina_material
+        options = materials[0].tina
 
-        layout.prop(options, 'render_samples')
-        layout.prop(options, 'viewport_samples')
-        layout.prop(options, 'start_pixel_size')
         layout.prop(options, 'basecolor')
+        layout.prop_search(options, 'basecolor_texture', bpy.data, 'images')
         layout.prop(options, 'metallic')
         layout.prop(options, 'roughness')
         layout.prop(options, 'specular')
@@ -197,6 +185,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
         self.object_to_mesh = {}
         self.object_to_light = {}
+        self.material_to_id = {}
         self.nblocks = 0
         self.nsamples = 0
         self.viewport_samples = 16
@@ -211,6 +200,8 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
         verts, norms, coors = blender_get_object_mesh(object, depsgraph)
         world = np.array(object.matrix_world)
+
+        material = object.data.materials[0].tina
 
         mtlid = -1
         self.object_to_mesh[object] = world, verts, norms, coors, mtlid
@@ -235,6 +226,12 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
         self.object_to_light[object] = world, color, size, type
 
+    def __add_material(self, material, depsgraph):
+        material = material.tina
+        basecolor = np.array(material.basecolor)
+        basecolor_texture = blender_get_image_pixels(material.basecolor_texture)
+        
+
     def __setup_scene(self, depsgraph):
         self.update_stats('Initializing', 'Loading scene')
 
@@ -247,6 +244,9 @@ class TinaRenderEngine(bpy.types.RenderEngine):
                     self.__add_mesh_object(object, depsgraph)
                 elif object.type == 'LIGHT':
                     self.__add_light_object(object, depsgraph)
+
+            if isinstance(object, bpy.types.Material):
+                self.__add_material(object, depsgraph)
 
         self.__on_update(depsgraph)
 
@@ -281,6 +281,9 @@ class TinaRenderEngine(bpy.types.RenderEngine):
                 elif object.type == 'LIGHT':
                     self.__add_light_object(object, depsgraph)
                     need_update = True
+
+            if isinstance(object, bpy.types.Material):
+                self.__add_material(object, depsgraph)
 
         if need_update:
             self.update_stats('Initializing', 'Updating scene')
@@ -556,6 +559,7 @@ class TinaRenderProperties(bpy.types.PropertyGroup):
 
 class TinaMaterialProperties(bpy.types.PropertyGroup):
     basecolor: bpy.props.FloatVectorProperty(name='basecolor', subtype='COLOR', min=0, max=1, default=(0.8, 0.8, 0.8))
+    basecolor_texture: bpy.props.StringProperty(name='basecolor texture')
     metallic: bpy.props.FloatProperty(name='metallic', min=0, max=1, default=0.0)
     roughness: bpy.props.FloatProperty(name='roughness', min=0, max=1, default=0.4)
     specular: bpy.props.FloatProperty(name='specular', min=0, max=1, default=0.5)
@@ -573,14 +577,11 @@ def register():
     bpy.utils.register_class(TinaRenderProperties)
     bpy.utils.register_class(TinaMaterialProperties)
 
-    bpy.types.World.tina_color = bpy.props.FloatVectorProperty(name='Color', subtype='COLOR', min=0, max=1, default=(0.04, 0.04, 0.04))
-    bpy.types.World.tina_strength = bpy.props.FloatProperty(name='Strength', min=0, default=1, subtype='POWER')
     bpy.types.Scene.tina_render = bpy.props.PointerProperty(name='tina', type=TinaRenderProperties)
-    bpy.types.Material.tina_material = bpy.props.PointerProperty(name='tina', type=TinaMaterialProperties)
+    bpy.types.Material.tina = bpy.props.PointerProperty(name='tina', type=TinaMaterialProperties)
 
     bpy.utils.register_class(TinaRenderEngine)
     bpy.utils.register_class(TinaLightPanel)
-    bpy.utils.register_class(TinaWorldPanel)
     bpy.utils.register_class(TinaRenderPanel)
     bpy.utils.register_class(TinaMaterialPanel)
 
@@ -591,7 +592,6 @@ def register():
 def unregister():
     bpy.utils.unregister_class(TinaRenderEngine)
     bpy.utils.unregister_class(TinaLightPanel)
-    bpy.utils.unregister_class(TinaWorldPanel)
     bpy.utils.unregister_class(TinaRenderPanel)
     bpy.utils.unregister_class(TinaMaterialPanel)
 
@@ -599,10 +599,8 @@ def unregister():
         if 'TINA' in panel.COMPAT_ENGINES:
             panel.COMPAT_ENGINES.remove('TINA')
 
-    del bpy.types.World.tina_color
-    del bpy.types.World.tina_strength
     del bpy.types.Scene.tina_render
-    del bpy.types.Material.tina_material
+    del bpy.types.Material.tina
 
     bpy.utils.unregister_class(TinaRenderProperties)
     bpy.utils.unregister_class(TinaMaterialProperties)
