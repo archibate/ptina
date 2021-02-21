@@ -9,7 +9,7 @@ from tina.sampling.random import RandomSampler as MetropolisSampler
 @ti.data_oriented
 class MLTPathEngine(metaclass=Singleton):
     def __init__(self):
-        self.nchains = nchains = 2**16
+        self.nchains = nchains = 2**18
         self.ndims = ndims = 32
 
         self.X_old = ti.field(float, (nchains, ndims))
@@ -24,8 +24,8 @@ class MLTPathEngine(metaclass=Singleton):
 
         @ti.materialize_callback
         def init_params():
-            self.LSP[None] = 0.1
-            self.Sigma[None] = 0.05
+            self.LSP[None] = 0.25
+            self.Sigma[None] = 0.01
 
     @ti.kernel
     def reset(self):
