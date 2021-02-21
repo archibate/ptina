@@ -1,7 +1,34 @@
+'''
+compose multiple meshes (with different material id) into a single one
+so that we can pass it into ModelPool().load(vertices, mtlids)
+'''
+
 import numpy as np
 
 
 def compose_multiple_meshes(primitives):
+    '''
+primitives:
+    a list of tuple (p, n, t, w, m)
+
+    p is vertex position array of shape [num, 3, 3]
+    n is vertex normal array of shape [num, 3, 3]
+    t is vertex texcoord array of shape [num, 3, 2]
+    w is the world transform matrix of shape [4, 4]
+    m is the material id, simply an integer
+
+    where num is the count of faces
+
+return:
+    a tuple of (vertices, mtlids)
+
+    vertices is array of shape [num * 3, 8], whose 8 elements are:
+
+    posx posy posz nrmx nrmy nrmz texu texv
+
+    mtlids is an integer array of shape [num], with material ids for each face
+    '''
+
     def np34(x, w):
         return np.concatenate([x, np.full((x.shape[0], 1), w)], axis=1)
 

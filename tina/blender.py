@@ -1,3 +1,7 @@
+'''
+Blender intergration module
+'''
+
 import bpy
 import bgl
 import numpy as np

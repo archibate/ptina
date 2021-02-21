@@ -1,3 +1,7 @@
+'''
+load a worker module to operate in a separate thread, see tina/worker.py
+'''
+
 import functools
 import threading
 import traceback

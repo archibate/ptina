@@ -1,3 +1,7 @@
+'''
+BVH tree implementation for ray tracing acceleration
+'''
+
 from tina.model import *
 from tina.geometries import *
 from tina.stack import *

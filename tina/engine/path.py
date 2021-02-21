@@ -1,3 +1,7 @@
+'''
+unidirectional path integrator, fast for regular lighting conditions
+'''
+
 from tina.engine import *
 from tina.sampling import *
 from tina.sampling.sobol import *

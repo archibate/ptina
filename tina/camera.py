@@ -1,3 +1,7 @@
+'''
+camera that generate rays from a given 4x4 perspective matrix
+'''
+
 from tina.geometries import *
 
 

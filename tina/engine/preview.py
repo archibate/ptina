@@ -1,3 +1,7 @@
+'''
+albedo & normal ray tracer, used for fast preview and rendering AOV targets
+'''
+
 from tina.engine import *
 
 

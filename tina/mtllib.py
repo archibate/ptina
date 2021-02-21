@@ -1,3 +1,7 @@
+'''
+material table, storing their factor and texture informations
+'''
+
 from tina.image import *
 from tina.materials.disney import *
 from tina.tools.globals import *

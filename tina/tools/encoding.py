@@ -1,3 +1,7 @@
+'''
+encoding large numpy arrays into base64 for embed assets
+'''
+
 import numpy as np
 from base64 import b85encode, b85decode
 from io import BytesIO

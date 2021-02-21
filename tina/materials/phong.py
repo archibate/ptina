@@ -1,3 +1,7 @@
+'''
+classic Phong BRDF
+'''
+
 from tina.materials import *
 
 

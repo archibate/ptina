@@ -1,3 +1,7 @@
+'''
+Taichi built-in pseudo-random generator: ti.random()
+'''
+
 from tina.sampling import *
 
 

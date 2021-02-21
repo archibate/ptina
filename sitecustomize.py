@@ -1,3 +1,7 @@
+'''
+analysising import performance
+'''
+
 import sys
 import importlib
 import time

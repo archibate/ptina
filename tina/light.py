@@ -1,3 +1,7 @@
+'''
+point and area lights
+'''
+
 from tina.common import *
 from tina.geometries import *
 

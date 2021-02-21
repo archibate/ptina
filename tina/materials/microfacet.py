@@ -1,3 +1,7 @@
+'''
+implementing functions of the microfacet theory
+'''
+
 from tina.common import *
 
 

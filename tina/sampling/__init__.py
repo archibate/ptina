@@ -1,3 +1,7 @@
+'''
+sampling, generating random numbers for monte-carlo intergration
+'''
+
 from tina.common import *
 
 

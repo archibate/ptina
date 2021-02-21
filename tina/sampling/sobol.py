@@ -1,3 +1,9 @@
+'''
+Sobol quasi-random generator for low occupancy sequence
+
+references: https://web.maths.unsw.edu.au/~fkuo/sobol/
+'''
+
 from tina.sampling import *
 try:
     # https://github.com/archibate/pysobol

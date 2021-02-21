@@ -1,3 +1,7 @@
+'''
+brute-force intergrator, should be used for testing only
+'''
+
 from tina.engine import *
 from tina.sampling import *
 from tina.sampling.sobol import *

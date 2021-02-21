@@ -1,3 +1,7 @@
+'''
+simulated local integer stack for tree traversal in Taichi
+'''
+
 from tina.common import *
 from tina.localarray import *
 

@@ -1,3 +1,7 @@
+'''
+lambert BRDF for ideal diffuse materials
+'''
+
 from tina.materials import *
 
 

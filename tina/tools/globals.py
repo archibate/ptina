@@ -1,3 +1,7 @@
+'''
+declaring global parameters for debugging purpose
+'''
+
 from tina.common import *
 
 

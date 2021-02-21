@@ -1,3 +1,7 @@
+'''
+common utilities used by this project
+'''
+
 import taichi as ti
 import numpy as np
 

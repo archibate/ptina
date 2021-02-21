@@ -1,3 +1,7 @@
+'''
+different type of integrators
+'''
+
 from tina.camera import *
 from tina.model import *
 from tina.light import *

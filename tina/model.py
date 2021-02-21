@@ -1,3 +1,7 @@
+'''
+triangle mesh model storage in Taichi memory
+'''
+
 from tina.allocator import *
 from tina.geometries import *
 from tina.mtllib import *

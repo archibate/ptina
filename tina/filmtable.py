@@ -1,3 +1,7 @@
+'''
+film that records the rendering result
+'''
+
 from tina.image import *
 
 

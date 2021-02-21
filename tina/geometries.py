@@ -1,3 +1,7 @@
+'''
+ray tracing utilities, computing intersection with different kind of geometries
+'''
+
 from tina.common import *
 
 

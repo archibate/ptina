@@ -1,3 +1,7 @@
+'''
+dynamically loading textures into Taichi memory
+'''
+
 from tina.allocator import *
 
 

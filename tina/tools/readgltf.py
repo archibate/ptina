@@ -1,3 +1,7 @@
+'''
+loading GLTF scenes based on gltflib
+'''
+
 from tina.common import *
 from tina.tools import matrix
 from base64 import b64decode
