@@ -1,5 +1,6 @@
 from tina.common import *
 from tina.model import *
+from tina.stack import *
 
 
 @ti.pyfunc
@@ -32,6 +33,8 @@ def clz(x):
 @ti.data_oriented
 class LinearBVH:
     def __init__(self, n=2**22):  # 32 MB
+        self.bmin = ti.Vector.field(3, float, n)
+        self.bmax = ti.Vector.field(3, float, n)
         self.child = ti.Vector.field(2, int, n)
         self.leaf = ti.field(int, n)
 
@@ -129,9 +132,21 @@ class LinearBVH:
 
 
     @ti.func
-    def getCenter(self, i):
+    def getVertices(self, i):
         face = ModelPool().get_face(i)
         v0, v1, v2 = face.v0, face.v1, face.v2
+        return v0, v1, v2
+
+
+    @ti.func
+    def getBoundingBox(self, i):
+        v0, v1, v2 = self.getVertices(i)
+        return min(v0, v1, v2), max(v0, v1, v2)
+
+
+    @ti.func
+    def getCenter(self, i):
+        v0, v1, v2 = self.getVertices(i)
         center = (v0 + v1 + v2) / 3
         return center
 
@@ -141,8 +156,7 @@ class LinearBVH:
         n = ModelPool().nfaces[None]
         self.n[None] = n
 
-        bmax = V3(-inf)
-        bmin = V3(inf)
+        bmin, bmax = V3(inf), V3(-inf)
         for i in range(n):
             center = self.getCenter(i)
             ti.atomic_max(bmax, center)
@@ -203,13 +217,63 @@ class LinearBVH:
             self.child[i][1] = rhs
 
 
+    @ti.func
+    def getNodeBoundingBox(self, n, i):
+        bmin, bmax = V3(0.0), V3(0.0)
+        if i < n:  # leaf node
+            bmin, bmax = self.getBoundingBox(self.leaf[i])
+        else:      # internal node
+            i -= n
+            bmin, bmax = self.bmin[i], self.bmax[i]
+        return bmin, bmax
+
+
+    @ti.kernel
+    def genBoundingBoxes(self):
+        n = self.n[None]
+
+        for i in range(n):
+            Stack().set(i)
+
+            stack = Stack().get()
+
+            stack.clear()
+            stack.push(self.child[i][0])
+            stack.push(self.child[i][1])
+
+            bmin, bmax = V3(inf), V3(-inf)
+
+            ntimes = 0
+            while ntimes < n and stack.size() != 0:
+                curr = stack.pop()
+
+                bmin1, bmax1 = self.getNodeBoundingBox(n, curr)
+                bmin, bmax = min(bmin, bmin1), max(bmax, bmax1)
+
+                if i >= n:  # internal node
+                    j = curr - n
+                    stack.push(self.child[j][0])
+                    stack.push(self.child[j][1])
+
+                ntimes += 1
+
+            self.bmin[i], self.bmax[i] = bmin, bmax
+
+            Stack().unset()
+
+
+Stack()
 ModelPool()
-bvh = LinearBVH()
-ModelPool().load('assets/cube.obj')
+bvh = LinearBVH(2**16)
+
+ModelPool().load('assets/monkey.obj')
 bvh.genMortonCodes()
 bvh.sortMortonCodes()
 bvh.genHierarchy()
+bvh.genBoundingBoxes()
 
 print(bvh.leaf.to_numpy())
 print(bvh.child.to_numpy())
+print(bvh.bmin.to_numpy())
+print(bvh.bmax.to_numpy())
 exit(1)
