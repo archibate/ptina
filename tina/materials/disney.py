@@ -6,7 +6,6 @@ references: https://github.com/wdas/brdf/blob/main/src/brdfs/disney.brdf
 
 from tina.materials import *
 from tina.materials.microfacet import *
-from tina.tools.globals import *
 
 
 @ti.data_oriented

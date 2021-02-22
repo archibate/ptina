@@ -21,8 +21,7 @@ class PreviewEngine(metaclass=Singleton):
 
     @ti.kernel
     def _render(self):
-        for i, j in ti.ndrange(FilmTable().nx, FilmTable().ny):
-            Stack().set(i * FilmTable().nx + j)
+        for i, j in ti.static(GSL(FilmTable().nx, FilmTable().ny)):
             rng = self.get_rng(i, j)
 
             albedo = V3(0.0)
@@ -40,5 +39,3 @@ class PreviewEngine(metaclass=Singleton):
 
             FilmTable()[1, i, j] += V34(albedo, 1.0)
             FilmTable()[2, i, j] += V34(normal, 1.0)
-
-            Stack().unset()

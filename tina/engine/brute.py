@@ -63,8 +63,7 @@ class BruteEngine(metaclass=Singleton):
 
     @ti.kernel
     def _render(self):
-        for i, j in ti.ndrange(FilmTable().nx, FilmTable().ny):
-            Stack().set(i * FilmTable().nx + j)
+        for i, j in ti.static(GSL(FilmTable().nx, FilmTable().ny)):
             rng = self.get_rng(i, j)
 
             dx, dy = random2(rng)
@@ -74,5 +73,3 @@ class BruteEngine(metaclass=Singleton):
 
             clr = self.trace(ray, rng)
             FilmTable()[0, i, j] += V34(clr, 1.0)
-
-            Stack().unset()
