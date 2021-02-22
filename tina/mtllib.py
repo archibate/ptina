@@ -16,8 +16,15 @@ class ParameterPair:
     def load(self, i, fac, tex):
         if fac is None:
             fac = 1.0
+        if isinstance(fac, np.ndarray):
+            if len(fac.shape):
+                fac = list(fac)
+            else:
+                fac = float(fac)
         if not isinstance(fac, (tuple, list)):
             fac = [fac, fac, fac, fac]
+        if isinstance(fac, (tuple, list)) and len(fac) == 3:
+            fac = list(fac) + [1.0]
         self.fac[i] = fac
         if tex is None:
             self.tex[i] = -1

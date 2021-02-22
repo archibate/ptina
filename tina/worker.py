@@ -51,6 +51,10 @@ def load_model(vertices, mtlids):
     ModelPool().load(vertices, mtlids)
 
 
+def load_materials(materials):
+    MaterialPool().load(materials)
+
+
 def build_tree():
     BVHTree().build()
 

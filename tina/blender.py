@@ -5,25 +5,29 @@ Blender intergration module
 import bpy
 import bgl
 import numpy as np
-import mtworker
 
 from tina.multimesh import compose_multiple_meshes
 
 
-@mtworker.OnDemandProxy
-def worker():
-    @mtworker.DaemonModule
+if 0:
+    import mtworker
+    @mtworker.OnDemandProxy
     def worker():
-        print('[TinaBlend] importing worker')
-        from tina import worker
-        print('[TinaBlend] importing worker done')
+        @mtworker.DaemonModule
+        def worker():
+            print('[TinaBlend] importing worker')
+            from tina import worker
+            print('[TinaBlend] importing worker done')
+            return worker
+
+        print('[TinaBlend] initializing worker')
+        worker.init()
+        print('[TinaBlend] initializing worker done')
+
         return worker
-
-    print('[TinaBlend] initializing worker')
+else:
+    from tina import worker
     worker.init()
-    print('[TinaBlend] initializing worker done')
-
-    return worker
 
 
 def calc_camera_matrices(depsgraph):
@@ -157,7 +161,9 @@ class TinaMaterialPanel(bpy.types.Panel):
         layout.prop(options, 'basecolor')
         layout.prop_search(options, 'basecolor_texture', bpy.data, 'images')
         layout.prop(options, 'metallic')
+        layout.prop_search(options, 'metallic_texture', bpy.data, 'images')
         layout.prop(options, 'roughness')
+        layout.prop_search(options, 'roughness_texture', bpy.data, 'images')
         layout.prop(options, 'specular')
         layout.prop(options, 'specularTint')
         layout.prop(options, 'subsurface')
@@ -185,10 +191,12 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
         self.object_to_mesh = {}
         self.object_to_light = {}
-        self.material_to_id = {}
+        self.ui_materials = []
+        self.materials = []
         self.nblocks = 0
         self.nsamples = 0
         self.viewport_samples = 16
+        self.unique_id = 0
 
     # When the render engine instance is destroy, this is called. Clean up any
     # render engine data here, for example stopping running render threads.
@@ -201,9 +209,12 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         verts, norms, coors = blender_get_object_mesh(object, depsgraph)
         world = np.array(object.matrix_world)
 
-        material = object.data.materials[0].tina
-
         mtlid = -1
+        if len(object.data.materials):
+            material = object.data.materials[0].tina
+            if material in self.ui_materials:
+                mtlid = self.ui_materials.index(material)
+
         self.object_to_mesh[object] = world, verts, norms, coors, mtlid
 
     def __add_light_object(self, object, depsgraph):
@@ -226,11 +237,25 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
         self.object_to_light[object] = world, color, size, type
 
+    def __add_image(self, image):
+        if image == '':
+            return None
+        image = bpy.data.images[image]
+        return blender_get_image_pixels(image)
+
     def __add_material(self, material, depsgraph):
         material = material.tina
         basecolor = np.array(material.basecolor)
-        basecolor_texture = blender_get_image_pixels(material.basecolor_texture)
-        
+        basecolor_texture = self.__add_image(material.basecolor_texture)
+        metallic = np.array(material.metallic)
+        metallic_texture = self.__add_image(material.metallic_texture)
+        roughness = np.array(material.roughness)
+        roughness_texture = self.__add_image(material.roughness_texture)
+        matr = (basecolor, basecolor_texture,
+                metallic, metallic_texture, roughness, roughness_texture)
+
+        self.ui_materials.append(material)
+        self.materials.append(matr)
 
     def __setup_scene(self, depsgraph):
         self.update_stats('Initializing', 'Loading scene')
@@ -291,11 +316,14 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             self.__on_update(depsgraph)
 
     def __on_update(self, depsgraph):
+        self.update_stats('Initializing', 'Composing meshes')
+
         meshes = []
         for world, verts, norms, coors, mtlid in self.object_to_mesh.values():
             meshes.append((verts, norms, coors, world, mtlid))
         vertices, mtlids = compose_multiple_meshes(meshes)
 
+        worker.load_materials(self.materials)
         worker.load_model(vertices, mtlids)
         self.update_stats('Initializing', 'Constructing tree')
         worker.build_tree()
@@ -559,9 +587,11 @@ class TinaRenderProperties(bpy.types.PropertyGroup):
 
 class TinaMaterialProperties(bpy.types.PropertyGroup):
     basecolor: bpy.props.FloatVectorProperty(name='basecolor', subtype='COLOR', min=0, max=1, default=(0.8, 0.8, 0.8))
-    basecolor_texture: bpy.props.StringProperty(name='basecolor texture')
+    basecolor_texture: bpy.props.StringProperty(name='basecolor')
     metallic: bpy.props.FloatProperty(name='metallic', min=0, max=1, default=0.0)
+    metallic_texture: bpy.props.StringProperty(name='metallic')
     roughness: bpy.props.FloatProperty(name='roughness', min=0, max=1, default=0.4)
+    roughness_texture: bpy.props.StringProperty(name='roughness')
     specular: bpy.props.FloatProperty(name='specular', min=0, max=1, default=0.5)
     specularTint: bpy.props.FloatProperty(name='specularTint', min=0, max=1, default=0.4)
     subsurface: bpy.props.FloatProperty(name='subsurface', min=0, max=1, default=0.0)
