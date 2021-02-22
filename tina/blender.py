@@ -544,12 +544,11 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         region = context.region
         region3d = context.region_data
         scene = depsgraph.scene
+        max_samples = scene.tina_render.viewport_samples
 
         is_preview = True
         if is_preview:
-            max_samples = scene.tina_render.albedo_samples
-        else:
-            max_samples = scene.tina_render.viewport_samples
+            max_samples = min(max_samples, scene.tina_render.albedo_samples)
 
         # Get viewport dimensions
         dimensions = region.width, region.height
@@ -703,7 +702,7 @@ def get_panels():
 class TinaRenderProperties(bpy.types.PropertyGroup):
     render_samples: bpy.props.IntProperty(name='Render Samples', min=1, default=128)
     viewport_samples: bpy.props.IntProperty(name='Viewport Samples', min=1, default=32)
-    albedo_samples: bpy.props.IntProperty(name='Albedo Samples', min=1, default=16)
+    albedo_samples: bpy.props.IntProperty(name='Albedo Samples', min=1, default=32)
     start_pixel_size: bpy.props.IntProperty(name='Start Pixel Size', min=1, default=8, subtype='PIXEL')
 
 

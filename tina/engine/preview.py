@@ -36,7 +36,7 @@ class PreviewEngine(metaclass=Singleton):
 
             if hit.hit == 1:
                 hitpos, normal, sign, material = ModelPool().get_geometries(hit, ray)
-                albedo = V3(1.0)
+                albedo = material.basecolor
 
             FilmTable()[1, i, j] += V34(albedo, 1.0)
             FilmTable()[2, i, j] += V34(normal, 1.0)
