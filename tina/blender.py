@@ -234,20 +234,17 @@ class TINA_PT_context_material(MaterialButtonsPanel, bpy.types.Panel):
                 row.operator("object.material_slot_select", text="Select")
                 row.operator("object.material_slot_deselect", text="Deselect")
 
+        row = layout.row()
         if obj:
-            # Note that we don't use layout.template_ID() because we can't
-            # control the copy operator in that template.
-            # So we mimic our own template_ID.
-            layout.template_ID(obj, 'active_material', new='material.new')
-            row = layout.row()
-
+            row.template_ID(obj, 'active_material', new='material.new')
             if slot:
-                row.prop(slot, 'link', text='')
+                icon_link = 'MESH_DATA' if slot.link == 'DATA' else 'OBJECT_DATA'
+                row.prop(slot, 'link', icon=icon_link, icon_only=True)
             else:
                 row.label()
         elif mat:
-            layout.template_ID(space, "pin_id")
-            layout.separator()
+            split.template_ID(space, "pin_id")
+            split.separator()
 
 
 class TinaRenderEngine(bpy.types.RenderEngine):
