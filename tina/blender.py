@@ -455,6 +455,9 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         result = self.begin_result(0, 0, self.size_x, self.size_y)
         layer = result.layers[0]
 
+        for id in range(len(self.render_passes)):
+            worker.clear(i)
+
         nsamples = scene.tina_render.render_samples
         for samp in range(nsamples):
             self.update_stats('Rendering', f'{samp}/{nsamples} Samples')
