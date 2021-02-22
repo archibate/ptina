@@ -31,7 +31,7 @@ def get_size():
     return FilmTable().nx, FilmTable().ny
 
 
-def clear():
+def clear(id=0):
     if hasattr(DefaultEngine(), 'reset'):
         DefaultEngine().reset()
     FilmTable().clear(id)

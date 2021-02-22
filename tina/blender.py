@@ -8,8 +8,6 @@ import bpy
 import bgl
 import numpy as np
 
-from tina.multimesh import compose_multiple_meshes
-
 
 if 1:
     import mtworker
@@ -408,6 +406,8 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         meshes = []
         for world, verts, norms, coors, mtlid in self.object_to_mesh.values():
             meshes.append((verts, norms, coors, world, mtlid))
+
+        from tina.multimesh import compose_multiple_meshes
         vertices, mtlids = compose_multiple_meshes(meshes)
 
         self.update_stats('Initializing', 'Loading materials')
@@ -543,10 +543,11 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
         region = context.region
         region3d = context.region_data
+        view3d = context.space_data
         scene = depsgraph.scene
         max_samples = scene.tina_render.viewport_samples
 
-        is_preview = True
+        is_preview = view3d.shading.type == 'MATERIAL'
         if is_preview:
             max_samples = min(max_samples, scene.tina_render.albedo_samples)
 
@@ -560,6 +561,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         self.bind_display_space_shader(scene)
 
         if not self.draw_data or self.draw_data.dimensions != dimensions \
+                or self.draw_data.is_preview != is_preview \
                 or self.nblocks != 0:
             width, height = dimensions
             if self.nblocks != 0:
@@ -568,6 +570,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             worker.set_size(width, height)
 
         if not self.draw_data or self.draw_data.dimensions != dimensions \
+                or self.draw_data.is_preview != is_preview \
                 or self.draw_data.perspective != perspective:
             self.__reset_samples(scene)
             self.__update_camera(perspective)
@@ -575,10 +578,10 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         if self.nsamples < max_samples:
             if self.nblocks > 1:
                 self.nsamples = 0
-                worker.clear()
+                worker.clear(1 if is_preview else 0)
             else:
                 if self.nblocks == 1:
-                    worker.clear()
+                    worker.clear(1 if is_preview else 0)
                 self.nsamples += 1
 
             self.update_stats('Rendering', f'{self.nsamples}/{max_samples} Samples')
@@ -606,6 +609,7 @@ class TinaDrawData:
         # Generate dummy float image buffer
         self.dimensions = dimensions
         self.perspective = perspective
+        self.is_preview = is_preview
         width, height = dimensions
 
         resx, resy = worker.get_size()
