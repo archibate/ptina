@@ -31,7 +31,7 @@ class DaemonWorker:
             try:
                 ret = func()
             except BaseException:
-                traceback.format_exc()
+                print(traceback.format_exc())
                 ret = None
             func.retval = ret
             self.queue.task_done()

@@ -142,6 +142,7 @@ class TinaRenderPanel(bpy.types.Panel):
 
         layout.prop(options, 'render_samples')
         layout.prop(options, 'viewport_samples')
+        layout.prop(options, 'albedo_samples')
         layout.prop(options, 'start_pixel_size')
 
 
@@ -267,8 +268,6 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         self.materials = []
         self.nblocks = 0
         self.nsamples = 0
-        self.viewport_samples = 16
-        self.unique_id = 0
 
     # When the render engine instance is destroy, this is called. Clean up any
     # render engine data here, for example stopping running render threads.
@@ -406,16 +405,14 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
     def __on_update(self, depsgraph):
         self.update_stats('Initializing', 'Composing meshes')
-
         meshes = []
         for world, verts, norms, coors, mtlid in self.object_to_mesh.values():
             meshes.append((verts, norms, coors, world, mtlid))
         vertices, mtlids = compose_multiple_meshes(meshes)
 
-        print(len(self.materials))
-        print(mtlids)
-
+        self.update_stats('Initializing', 'Loading materials')
         worker.load_materials(self.materials)
+        self.update_stats('Initializing', 'Loading models')
         worker.load_model(vertices, mtlids)
         self.update_stats('Initializing', 'Constructing tree')
         worker.build_tree()
@@ -431,9 +428,19 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         self.nsamples = 0
         self.nblocks = scene.tina_render.start_pixel_size
 
+    render_passes = [
+        ('Combined', 'RGBA', 'COLOR'),
+        ('Albedo', 'RGB', 'COLOR'),
+        ('Normal', 'XYZ', 'VECTOR'),
+    ]
+
     # This is the method called by Blender for both final renders (F12) and
     # small preview for materials, world and lights.
     def render(self, depsgraph):
+        for name, channels, type in self.render_passes:
+            if name not in ['Combined', 'Depth']:
+                self.add_pass(name, len(channels), channels)
+
         scene = depsgraph.scene
         scale = scene.render.resolution_percentage / 100.0
         self.size_x = int(scene.render.resolution_x * scale)
@@ -446,6 +453,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
         # Here we write the pixel values to the RenderResult
         result = self.begin_result(0, 0, self.size_x, self.size_y)
+        layer = result.layers[0]
 
         nsamples = scene.tina_render.render_samples
         for samp in range(nsamples):
@@ -453,18 +461,29 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             self.update_progress((samp + .5) / nsamples)
             if self.test_break():
                 break
-            worker.render()
-            img = worker.get_image()
 
-            img = np.ascontiguousarray(img.swapaxes(0, 1))
-            rect = img.reshape(self.size_x * self.size_y, 4).tolist()
-            layer = result.layers[0].passes["Combined"]
-            layer.rect = rect
+            worker.render()
+            if samp < scene.tina_render.albedo_samples:
+                worker.render_preview()
+
+            for id, (name, channels, type) in enumerate(self.render_passes):
+                img = worker.get_image(id)
+                img = np.ascontiguousarray(img.swapaxes(0, 1))
+                img = img.reshape(self.size_x * self.size_y, 4)
+                if len(channels) != 4:
+                    img = img[:, :len(channels)]
+                layer.passes[name].rect = img.tolist()
+
             self.update_result(result)
         else:
             self.update_progress(1.0)
 
         self.end_result(result)
+
+    def update_render_passes(self, scene=None, renderlayer=None):
+        for name, channels, type in self.render_passes:
+            self.register_pass(scene, renderlayer,
+                    name, len(channels), channels, type)
 
     def __update_camera(self, perspective):
         worker.set_camera(np.array(perspective))
@@ -525,7 +544,12 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         region = context.region
         region3d = context.region_data
         scene = depsgraph.scene
-        max_samples = scene.tina_render.viewport_samples
+
+        is_preview = True
+        if is_preview:
+            max_samples = scene.tina_render.albedo_samples
+        else:
+            max_samples = scene.tina_render.viewport_samples
 
         # Get viewport dimensions
         dimensions = region.width, region.height
@@ -560,8 +584,11 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
             self.update_stats('Rendering', f'{self.nsamples}/{max_samples} Samples')
 
-            worker.render(self.nblocks == 0)
-            self.draw_data = TinaDrawData(dimensions, perspective)
+            if is_preview:
+                worker.render_preview()
+            else:
+                worker.render()
+            self.draw_data = TinaDrawData(dimensions, perspective, is_preview)
 
             if self.nsamples < max_samples or self.nblocks != 0:
                 self.tag_redraw()
@@ -575,7 +602,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
 
 class TinaDrawData:
-    def __init__(self, dimensions, perspective):
+    def __init__(self, dimensions, perspective, is_preview):
         print('[TinaBlend] redraw!')
         # Generate dummy float image buffer
         self.dimensions = dimensions
@@ -585,7 +612,7 @@ class TinaDrawData:
         resx, resy = worker.get_size()
 
         pixels = np.empty(resx * resy * 3, np.float32)
-        worker.fast_export_image(pixels)
+        worker.fast_export_image(pixels, 1 if is_preview else 0)
         self.pixels = bgl.Buffer(bgl.GL_FLOAT, resx * resy * 3, pixels)
 
         # Generate texture
@@ -676,6 +703,7 @@ def get_panels():
 class TinaRenderProperties(bpy.types.PropertyGroup):
     render_samples: bpy.props.IntProperty(name='Render Samples', min=1, default=128)
     viewport_samples: bpy.props.IntProperty(name='Viewport Samples', min=1, default=32)
+    albedo_samples: bpy.props.IntProperty(name='Albedo Samples', min=1, default=16)
     start_pixel_size: bpy.props.IntProperty(name='Start Pixel Size', min=1, default=8, subtype='PIXEL')
 
 

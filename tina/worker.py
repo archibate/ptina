@@ -5,16 +5,22 @@ unified API interface for running in a separate worker thread
 from tina.things import *
 #from tina.engine.mltpath import MLTPathEngine as DefaultEngine
 from tina.engine.path import PathEngine as DefaultEngine
+from tina.engine.preview import PreviewEngine
 
 
 def init():
     ti.init(ti.cuda, device_memory_fraction=0.9)
     init_things()
     DefaultEngine()
+    PreviewEngine()
 
 
 def render(aa=True):
     DefaultEngine().render()
+
+
+def render_preview(aa=True):
+    PreviewEngine().render()
 
 
 def set_size(nx, ny):

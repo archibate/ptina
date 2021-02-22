@@ -9,7 +9,7 @@ from tina.image import *
 class FilmTable(metaclass=Singleton):
     is_taichi_class = True
 
-    def __init__(self, size=2**22, count=1):  # 64 MB
+    def __init__(self, size=2**21, count=4):  # 128 MB
         self.res = ti.Vector.field(2, int, ())
         self.root = ti.Vector.field(4, float, (count, size))
 

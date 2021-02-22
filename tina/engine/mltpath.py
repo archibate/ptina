@@ -3,7 +3,6 @@ metropolis path integrator, great for rendering caustics
 '''
 
 from tina.engine.path import *
-from tina.sampling.random import RandomSampler as MetropolisSampler
 
 
 @ti.data_oriented

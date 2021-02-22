@@ -3,18 +3,20 @@ albedo & normal ray tracer, used for fast preview and rendering AOV targets
 '''
 
 from tina.engine import *
+from tina.sampling import *
+from tina.sampling.sobol import *
 
 
 @ti.data_oriented
 class PreviewEngine(metaclass=Singleton):
     def __init__(self):
-        DefaultSampler()
+        SobolSampler()
 
     def get_rng(self, i, j):
-        return DefaultSampler().get_proxy(wanghash2(i, j))
+        return SobolSampler().get_proxy(wanghash2(i, j))
 
     def render(self):
-        DefaultSampler().update()
+        SobolSampler().update()
         self._render()
 
     @ti.kernel
