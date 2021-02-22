@@ -1,5 +1,7 @@
 '''
 Blender intergration module
+
+references: https://docs.blender.org/api/current/bpy.types.RenderEngine.html
 '''
 
 import bpy
@@ -9,7 +11,7 @@ import numpy as np
 from tina.multimesh import compose_multiple_meshes
 
 
-if 0:
+if 1:
     import mtworker
     @mtworker.OnDemandProxy
     def worker():
@@ -109,6 +111,7 @@ class TinaLightPanel(bpy.types.Panel):
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = 'data'
+    COMPAT_ENGINES = {"TINA"}
 
     def draw(self, context):
         layout = self.layout
@@ -131,6 +134,7 @@ class TinaRenderPanel(bpy.types.Panel):
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = 'render'
+    COMPAT_ENGINES = {"TINA"}
 
     def draw(self, context):
         layout = self.layout
@@ -149,14 +153,15 @@ class TinaMaterialPanel(bpy.types.Panel):
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = 'material'
+    COMPAT_ENGINES = {"TINA"}
 
     def draw(self, context):
         layout = self.layout
-        materials = context.object.data.materials
-        if not len(materials):
-            return
 
-        options = materials[0].tina
+        material = context.object.active_material
+        if not material:
+            return
+        options = material.tina
 
         layout.prop(options, 'basecolor')
         layout.prop_search(options, 'basecolor_texture', bpy.data, 'images')
@@ -175,12 +180,82 @@ class TinaMaterialPanel(bpy.types.Panel):
         layout.prop(options, 'ior')
 
 
+from bl_ui.properties_material import MaterialButtonsPanel
+
+
+class TINA_PT_context_material(MaterialButtonsPanel, bpy.types.Panel):
+    """
+    Material UI Panel
+    """
+    COMPAT_ENGINES = {"TINA"}
+    bl_label = ""
+    bl_options = {"HIDE_HEADER"}
+    bl_order = 1
+
+    @classmethod
+    def poll(cls, context):
+        engine = context.scene.render.engine
+        return (context.material or context.object) and (engine == "TINA")
+
+    def draw(self, context):
+        layout = self.layout
+
+        mat = context.material
+        obj = context.object
+        slot = context.material_slot
+        space = context.space_data
+
+        # Re-create the Blender material UI, but without the surface/wire/volume/halo buttons
+        if obj:
+            is_sortable = len(obj.material_slots) > 1
+            rows = 1
+            if (is_sortable):
+                rows = 4
+
+            row = layout.row()
+
+            row.template_list("MATERIAL_UL_matslots", "", obj, "material_slots", obj, "active_material_index", rows=rows)
+
+            col = row.column(align=True)
+            col.operator("object.material_slot_add", icon='ADD', text="")
+            col.operator("object.material_slot_remove", icon='REMOVE', text="")
+
+            col.menu("MATERIAL_MT_context_menu", icon='DOWNARROW_HLT', text="")
+
+            if is_sortable:
+                col.separator()
+
+                col.operator("object.material_slot_move", icon='TRIA_UP', text="").direction = 'UP'
+                col.operator("object.material_slot_move", icon='TRIA_DOWN', text="").direction = 'DOWN'
+
+            if obj.mode == 'EDIT':
+                row = layout.row(align=True)
+                row.operator("object.material_slot_assign", text="Assign")
+                row.operator("object.material_slot_select", text="Select")
+                row.operator("object.material_slot_deselect", text="Deselect")
+
+        if obj:
+            # Note that we don't use layout.template_ID() because we can't
+            # control the copy operator in that template.
+            # So we mimic our own template_ID.
+            layout.template_ID(obj, 'active_material', new='material.new')
+            row = layout.row()
+
+            if slot:
+                row.prop(slot, 'link', text='')
+            else:
+                row.label()
+        elif mat:
+            layout.template_ID(space, "pin_id")
+            layout.separator()
+
+
 class TinaRenderEngine(bpy.types.RenderEngine):
     # These three members are used by blender to set up the
     # RenderEngine; define its internal name, visible name and capabilities.
     bl_idname = "TINA"
     bl_label = "Tina"
-    bl_use_preview = True
+    bl_use_preview = False
 
     # Init is called whenever a new render engine instance is created. Multiple
     # instances may exist at the same time, for example for a viewport and final
@@ -210,8 +285,8 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         world = np.array(object.matrix_world)
 
         mtlid = -1
-        if len(object.data.materials):
-            name = object.data.materials[0].name
+        if object.active_material:
+            name = object.active_material.name
             if name in self.ui_materials:
                 mtlid = self.ui_materials.index(name)
                 print('[TinaBlend] material', name, 'has id', mtlid)
@@ -591,9 +666,12 @@ def get_panels():
 
     panels = []
     for panel in bpy.types.Panel.__subclasses__():
-        if hasattr(panel, 'COMPAT_ENGINES') and 'BLENDER_RENDER' in panel.COMPAT_ENGINES:
-            if panel.__name__ not in exclude_panels:
-                panels.append(panel)
+        if not hasattr(panel, 'COMPAT_ENGINES'):
+            continue
+        if 'BLENDER_RENDER' not in panel.COMPAT_ENGINES:
+            continue
+        if panel.__name__ not in exclude_panels:
+            panels.append(panel)
 
     return panels
 
@@ -633,6 +711,7 @@ def register():
     bpy.utils.register_class(TinaLightPanel)
     bpy.utils.register_class(TinaRenderPanel)
     bpy.utils.register_class(TinaMaterialPanel)
+    bpy.utils.register_class(TINA_PT_context_material)
 
     for panel in get_panels():
         panel.COMPAT_ENGINES.add('TINA')
@@ -643,6 +722,7 @@ def unregister():
     bpy.utils.unregister_class(TinaLightPanel)
     bpy.utils.unregister_class(TinaRenderPanel)
     bpy.utils.unregister_class(TinaMaterialPanel)
+    bpy.utils.unregister_class(TINA_PT_context_material)
 
     for panel in get_panels():
         if 'TINA' in panel.COMPAT_ENGINES:
