@@ -215,6 +215,8 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             if material in self.ui_materials:
                 mtlid = self.ui_materials.index(material)
 
+        # import code; code.interact(local=locals())
+        print('[TinaBlend] material id =', mtlid)
         self.object_to_mesh[object] = world, verts, norms, coors, mtlid
 
     def __add_light_object(self, object, depsgraph):
@@ -244,6 +246,8 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         return blender_get_image_pixels(image)
 
     def __add_material(self, material, depsgraph):
+        print('[TinaBlend] adding material', material.name)
+
         material = material.tina
         basecolor = np.array(material.basecolor)
         basecolor_texture = self.__add_image(material.basecolor_texture)
@@ -254,8 +258,13 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         matr = (basecolor, basecolor_texture,
                 metallic, metallic_texture, roughness, roughness_texture)
 
-        self.ui_materials.append(material)
-        self.materials.append(matr)
+        if material not in self.ui_materials:
+            self.ui_materials.append(material)
+            self.materials.append(matr)
+        else:
+            mtlid = self.ui_materials.index(material)
+            self.ui_materials[mtlid] = material
+            self.materials[mtlid] = matr
 
     def __setup_scene(self, depsgraph):
         self.update_stats('Initializing', 'Loading scene')
@@ -264,19 +273,28 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         options = scene.tina_render
 
         for object in depsgraph.ids:
+            if isinstance(object, bpy.types.Material):
+                self.__add_material(object, depsgraph)
+
+        for object in depsgraph.ids:
             if isinstance(object, bpy.types.Object):
                 if object.type == 'MESH':
                     self.__add_mesh_object(object, depsgraph)
                 elif object.type == 'LIGHT':
                     self.__add_light_object(object, depsgraph)
 
-            if isinstance(object, bpy.types.Material):
-                self.__add_material(object, depsgraph)
-
         self.__on_update(depsgraph)
 
     def __update_scene(self, depsgraph):
         need_update = False
+
+        for update in depsgraph.updates:
+            object = update.id
+
+            if isinstance(object, bpy.types.Material):
+                self.__add_material(object, depsgraph)
+                need_update = True
+
         for update in depsgraph.updates:
             object = update.id
 
@@ -307,9 +325,6 @@ class TinaRenderEngine(bpy.types.RenderEngine):
                     self.__add_light_object(object, depsgraph)
                     need_update = True
 
-            if isinstance(object, bpy.types.Material):
-                self.__add_material(object, depsgraph)
-
         if need_update:
             self.update_stats('Initializing', 'Updating scene')
 
@@ -322,6 +337,9 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         for world, verts, norms, coors, mtlid in self.object_to_mesh.values():
             meshes.append((verts, norms, coors, world, mtlid))
         vertices, mtlids = compose_multiple_meshes(meshes)
+
+        print(self.materials)
+        print(mtlids)
 
         worker.load_materials(self.materials)
         worker.load_model(vertices, mtlids)
@@ -366,7 +384,6 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
             img = np.ascontiguousarray(img.swapaxes(0, 1))
             rect = img.reshape(self.size_x * self.size_y, 4).tolist()
-            # import code; code.interact(local=locals())
             layer = result.layers[0].passes["Combined"]
             layer.rect = rect
             self.update_result(result)
