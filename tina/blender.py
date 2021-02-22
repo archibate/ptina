@@ -211,12 +211,14 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
         mtlid = -1
         if len(object.data.materials):
-            material = object.data.materials[0].tina
-            if material in self.ui_materials:
-                mtlid = self.ui_materials.index(material)
+            name = object.data.materials[0].name
+            if name in self.ui_materials:
+                mtlid = self.ui_materials.index(name)
+                print('[TinaBlend] material', name, 'has id', mtlid)
+            else:
+                print('[TinaBlend] material', name, 'not found!')
 
         # import code; code.interact(local=locals())
-        print('[TinaBlend] material id =', mtlid)
         self.object_to_mesh[object] = world, verts, norms, coors, mtlid
 
     def __add_light_object(self, object, depsgraph):
@@ -248,6 +250,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
     def __add_material(self, material, depsgraph):
         print('[TinaBlend] adding material', material.name)
 
+        name = material.name
         material = material.tina
         basecolor = np.array(material.basecolor)
         basecolor_texture = self.__add_image(material.basecolor_texture)
@@ -255,16 +258,15 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         metallic_texture = self.__add_image(material.metallic_texture)
         roughness = np.array(material.roughness)
         roughness_texture = self.__add_image(material.roughness_texture)
-        matr = (basecolor, basecolor_texture,
+        material = (basecolor, basecolor_texture,
                 metallic, metallic_texture, roughness, roughness_texture)
 
-        if material not in self.ui_materials:
-            self.ui_materials.append(material)
-            self.materials.append(matr)
+        if name not in self.ui_materials:
+            self.ui_materials.append(name)
+            self.materials.append(material)
         else:
-            mtlid = self.ui_materials.index(material)
-            self.ui_materials[mtlid] = material
-            self.materials[mtlid] = matr
+            mtlid = self.ui_materials.index(name)
+            self.materials[mtlid] = material
 
     def __setup_scene(self, depsgraph):
         self.update_stats('Initializing', 'Loading scene')
@@ -338,7 +340,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             meshes.append((verts, norms, coors, world, mtlid))
         vertices, mtlids = compose_multiple_meshes(meshes)
 
-        print(self.materials)
+        print(len(self.materials))
         print(mtlids)
 
         worker.load_materials(self.materials)
