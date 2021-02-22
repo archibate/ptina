@@ -196,7 +196,7 @@ class LinearBVH:
 
 
     def sortMortonCodes(self):
-        arr = np.empty((self.n[None], 2))
+        arr = np.empty((self.n[None], 2), dtype=np.int32)
         self.exportMortonCodes(arr)
         sort = np.argsort(arr[:, 0])
         self.importMortonCodes(arr[sort])
@@ -249,6 +249,8 @@ class LinearBVH:
         while not self.genAABBSubstep():
             print('[Tina] running AABB substep...')
             count += 1
+            if count > 64:
+                raise RuntimeError('AABB step never stop! hierarchy corrupted?')
         print('[Tina] LBVH tree depth', count, '>=',
                 int(np.ceil(np.log2(self.n[None]))))
 
