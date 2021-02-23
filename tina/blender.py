@@ -9,7 +9,7 @@ import bgl
 import numpy as np
 
 
-if 1:
+if 0:
     import mtworker
     @mtworker.OnDemandProxy
     def worker():
@@ -264,6 +264,10 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         self.object_to_light = {}
         self.ui_materials = []
         self.materials = []
+        self.ui_images = []
+        self.images = []
+        self.images_updated = set()
+        self.meshes_updated = set()
         self.nblocks = 0
         self.nsamples = 0
 
@@ -287,7 +291,6 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             else:
                 print('[TinaBlend] material', name, 'not found!')
 
-        # import code; code.interact(local=locals())
         self.object_to_mesh[object] = world, verts, norms, coors, mtlid
 
     def __add_light_object(self, object, depsgraph):
@@ -310,11 +313,24 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
         self.object_to_light[object] = world, color, size, type
 
-    def __add_image(self, image):
-        if image == '':
-            return None
-        image = bpy.data.images[image]
-        return blender_get_image_pixels(image)
+    def __add_image(self, image, depsgraph):
+        print('[TinaBlend] adding image', image.name)
+
+        name = image.name
+        image = blender_get_image_pixels(image)
+
+        if name not in self.ui_images:
+            self.ui_images.append(name)
+            self.images.append(image)
+        else:
+            texid = self.ui_images.index(name)
+            self.images[texid] = image
+
+    def __get_image_id(self, name):
+        if name and name in self.ui_images:
+            return self.ui_images.index(name)
+        else:
+            return -1
 
     def __add_material(self, material, depsgraph):
         print('[TinaBlend] adding material', material.name)
@@ -322,13 +338,15 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         name = material.name
         material = material.tina
         basecolor = np.array(material.basecolor)
-        basecolor_texture = self.__add_image(material.basecolor_texture)
+        basecolor_texture = self.__get_image_id(material.basecolor_texture)
         metallic = np.array(material.metallic)
-        metallic_texture = self.__add_image(material.metallic_texture)
+        metallic_texture = self.__get_image_id(material.metallic_texture)
         roughness = np.array(material.roughness)
-        roughness_texture = self.__add_image(material.roughness_texture)
+        roughness_texture = self.__get_image_id(material.roughness_texture)
         material = (basecolor, basecolor_texture,
                 metallic, metallic_texture, roughness, roughness_texture)
+
+        import code; code.interact(local=locals())
 
         if name not in self.ui_materials:
             self.ui_materials.append(name)
@@ -342,6 +360,10 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
         scene = depsgraph.scene
         options = scene.tina_render
+
+        for object in depsgraph.ids:
+            if isinstance(object, bpy.types.Image):
+                self.__add_image(object, depsgraph)
 
         for object in depsgraph.ids:
             if isinstance(object, bpy.types.Material):
@@ -358,6 +380,13 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
     def __update_scene(self, depsgraph):
         need_update = False
+
+        for update in depsgraph.updates:
+            object = update.id
+
+            if isinstance(object, bpy.types.Image):
+                self.__add_image(object, depsgraph)
+                need_update = True
 
         for update in depsgraph.updates:
             object = update.id
@@ -412,6 +441,8 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
         self.update_stats('Initializing', 'Loading materials')
         worker.load_materials(self.materials)
+        self.update_stats('Initializing', 'Loading images')
+        worker.load_images(self.images)
         self.update_stats('Initializing', 'Loading models')
         worker.load_model(vertices, mtlids)
         self.update_stats('Initializing', 'Constructing tree')

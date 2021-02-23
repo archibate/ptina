@@ -57,6 +57,10 @@ def load_model(vertices, mtlids):
     ModelPool().load(vertices, mtlids)
 
 
+def load_images(images):
+    ImagePool().load(images)
+
+
 def load_materials(materials):
     MaterialPool().load(materials)
 

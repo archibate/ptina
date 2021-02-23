@@ -25,11 +25,7 @@ class ParameterPair:
         if isinstance(fac, (tuple, list)) and len(fac) == 3:
             fac = list(fac) + [1.0]
         self.fac[i] = fac
-        if tex is None:
-            self.tex[i] = -1
-        else:
-            imgid = ImagePool().load(tex)
-            self.tex[i] = imgid
+        self.tex[i] = tex
     
     @ti.func
     def get(self, mtlid, texcoord, default=1.0):

@@ -66,7 +66,7 @@ class ImagePool(metaclass=Singleton):
         self.idman.free(id)
         self.mman.free(base)
 
-    def load(self, arr):
+    def load_one(self, arr):
         if isinstance(arr, str):
             arr = ti.imread(arr)
         if arr.dtype == np.uint8:
@@ -88,6 +88,12 @@ class ImagePool(metaclass=Singleton):
 
         return id
 
+    def load(self, images):
+        self.mman.reset()
+        self.idman.reset()
+        for arr in images:
+            self.load(arr)
+
 
 @ti.data_oriented
 class Image:
@@ -98,7 +104,7 @@ class Image:
 
     @classmethod
     def load(cls, arr):
-        id = ImagePool().load(arr)
+        id = ImagePool().load_one(arr)
         return cls(id)
 
     @classmethod
@@ -141,12 +147,3 @@ class Image:
 
     def variable(self):
         return self
-
-
-if __name__ == '__main__':
-    ti.init()
-    ImagePool()
-    ToneMapping()
-
-    im = Image(ImagePool().load('assets/cloth.jpg'))
-    ti.imshow(im.to_numpy_normalized(ToneMapping()))
