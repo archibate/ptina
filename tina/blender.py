@@ -316,7 +316,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
     def __add_image(self, image):
         print('[TinaBlend] adding image', image.name)
 
-        name = image.nimageame
+        name = image.name
         image = blender_get_image_pixels(image)
 
         if name not in self.ui_images:
@@ -327,10 +327,11 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             self.images[texid] = image
 
     def __get_image_id(self, image):
-        if image is not None and image.name in self.ui_images:
-            return self.ui_images.index(image.name)
-        else:
-            return -1
+        if image is not None:
+            self.__add_image(image)
+            if image.name in self.ui_images:
+                return self.ui_images.index(image.name)
+        return -1
         # import code; code.interact(local=locals())
 
     def __add_material(self, material, depsgraph):
@@ -363,10 +364,6 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         options = scene.tina_render
 
         for object in depsgraph.ids:
-            if isinstance(object, bpy.types.Image):
-                self.__add_image(object)
-
-        for object in depsgraph.ids:
             if isinstance(object, bpy.types.Material):
                 self.__add_material(object, depsgraph)
 
@@ -383,13 +380,6 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         print('[TinaBlend] update scene')
 
         need_update = False
-
-        for update in depsgraph.updates:
-            object = update.id
-
-            if isinstance(object, bpy.types.Image):
-                self.__add_image(object)
-                need_update = True
 
         for update in depsgraph.updates:
             object = update.id

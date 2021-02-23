@@ -92,7 +92,7 @@ class ImagePool(metaclass=Singleton):
         self.mman.reset()
         self.idman.reset()
         for arr in images:
-            self.load(arr)
+            self.load_one(arr)
 
 
 @ti.data_oriented
