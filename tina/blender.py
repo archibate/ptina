@@ -9,7 +9,7 @@ import bgl
 import numpy as np
 
 
-if 0:
+if 1:
     import mtworker
     @mtworker.OnDemandProxy
     def worker():
@@ -163,11 +163,11 @@ class TinaMaterialPanel(bpy.types.Panel):
         options = material.tina
 
         layout.prop(options, 'basecolor')
-        layout.prop_search(options, 'basecolor_texture', bpy.data, 'images')
+        layout.prop(options, 'basecolor_texture')
         layout.prop(options, 'metallic')
-        layout.prop_search(options, 'metallic_texture', bpy.data, 'images')
+        layout.prop(options, 'metallic_texture')
         layout.prop(options, 'roughness')
-        layout.prop_search(options, 'roughness_texture', bpy.data, 'images')
+        layout.prop(options, 'roughness_texture')
         layout.prop(options, 'specular')
         layout.prop(options, 'specularTint')
         layout.prop(options, 'subsurface')
@@ -313,10 +313,10 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
         self.object_to_light[object] = world, color, size, type
 
-    def __add_image(self, image, depsgraph):
+    def __add_image(self, image):
         print('[TinaBlend] adding image', image.name)
 
-        name = image.name
+        name = image.nimageame
         image = blender_get_image_pixels(image)
 
         if name not in self.ui_images:
@@ -326,11 +326,12 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             texid = self.ui_images.index(name)
             self.images[texid] = image
 
-    def __get_image_id(self, name):
-        if name and name in self.ui_images:
-            return self.ui_images.index(name)
+    def __get_image_id(self, image):
+        if image is not None and image.name in self.ui_images:
+            return self.ui_images.index(image.name)
         else:
             return -1
+        # import code; code.interact(local=locals())
 
     def __add_material(self, material, depsgraph):
         print('[TinaBlend] adding material', material.name)
@@ -346,8 +347,6 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         material = (basecolor, basecolor_texture,
                 metallic, metallic_texture, roughness, roughness_texture)
 
-        import code; code.interact(local=locals())
-
         if name not in self.ui_materials:
             self.ui_materials.append(name)
             self.materials.append(material)
@@ -356,6 +355,8 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             self.materials[mtlid] = material
 
     def __setup_scene(self, depsgraph):
+        print('[TinaBlend] setup scene')
+
         self.update_stats('Initializing', 'Loading scene')
 
         scene = depsgraph.scene
@@ -363,7 +364,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
         for object in depsgraph.ids:
             if isinstance(object, bpy.types.Image):
-                self.__add_image(object, depsgraph)
+                self.__add_image(object)
 
         for object in depsgraph.ids:
             if isinstance(object, bpy.types.Material):
@@ -379,13 +380,15 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         self.__on_update(depsgraph)
 
     def __update_scene(self, depsgraph):
+        print('[TinaBlend] update scene')
+
         need_update = False
 
         for update in depsgraph.updates:
             object = update.id
 
             if isinstance(object, bpy.types.Image):
-                self.__add_image(object, depsgraph)
+                self.__add_image(object)
                 need_update = True
 
         for update in depsgraph.updates:
@@ -545,13 +548,11 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             first_time = True
 
             # Loop over all datablocks used in the scene.
-            print('[TinaBlend] setup scene')
             self.__setup_scene(depsgraph)
             self.__update_camera(perspective)
         else:
             first_time = False
 
-            print('[TinaBlend] update scene')
             # Test which datablocks changed
             for update in depsgraph.updates:
                 print("Datablock updated:", update.id.name)
@@ -746,11 +747,11 @@ class TinaRenderProperties(bpy.types.PropertyGroup):
 
 class TinaMaterialProperties(bpy.types.PropertyGroup):
     basecolor: bpy.props.FloatVectorProperty(name='basecolor', subtype='COLOR', min=0, max=1, default=(0.8, 0.8, 0.8))
-    basecolor_texture: bpy.props.StringProperty(name='basecolor')
+    basecolor_texture: bpy.props.PointerProperty(type=bpy.types.Image, name='basecolor')
     metallic: bpy.props.FloatProperty(name='metallic', min=0, max=1, default=0.0)
-    metallic_texture: bpy.props.StringProperty(name='metallic')
+    metallic_texture: bpy.props.PointerProperty(type=bpy.types.Image, name='metallic')
     roughness: bpy.props.FloatProperty(name='roughness', min=0, max=1, default=0.4)
-    roughness_texture: bpy.props.StringProperty(name='roughness')
+    roughness_texture: bpy.props.PointerProperty(type=bpy.types.Image, name='roughness')
     specular: bpy.props.FloatProperty(name='specular', min=0, max=1, default=0.5)
     specularTint: bpy.props.FloatProperty(name='specularTint', min=0, max=1, default=0.4)
     subsurface: bpy.props.FloatProperty(name='subsurface', min=0, max=1, default=0.0)
