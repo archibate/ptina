@@ -9,7 +9,7 @@ init_things()
 PathEngine()
 FilmTable().set_size(512, 512)
 
-vertices, mtlids, materials, images = readgltf('assets/cornell.gltf')
+vertices, mtlids, materials, images = readgltf('assets/monkey_cornell.gltf')
 ModelPool().load(vertices, mtlids)
 MaterialPool().load(materials)
 ImagePool().load(images)
@@ -33,6 +33,6 @@ for i in range(nsamples):
     PathEngine().render()
 
 img = FilmTable().get_image()
-print(nsamples / (time.time() - t0), 'sps')
-
-ti.imshow(img)
+title = f'{nsamples / (time.time() - t0):.03f} sps'
+ti.imshow(img, title)
+print(title)
