@@ -346,6 +346,38 @@ class BVHTree(LinearBVH, metaclass=Singleton):
     pass
 
 
+def export_boxes(path, bmins, bmaxs):
+    coors = [
+            [-1.,  1.,  1.], [ 1., -1.,  1.], [ 1.,  1.,  1.],
+            [ 1., -1.,  1.], [-1., -1., -1.], [ 1., -1., -1.],
+            [-1., -1.,  1.], [-1.,  1., -1.], [-1., -1., -1.],
+            [ 1.,  1., -1.], [-1., -1., -1.], [-1.,  1., -1.],
+            [ 1.,  1.,  1.], [ 1., -1., -1.], [ 1.,  1., -1.],
+            [-1.,  1.,  1.], [ 1.,  1., -1.], [-1.,  1., -1.],
+            [-1.,  1.,  1.], [-1., -1.,  1.], [ 1., -1.,  1.],
+            [ 1., -1.,  1.], [-1., -1.,  1.], [-1., -1., -1.],
+            [-1., -1.,  1.], [-1.,  1.,  1.], [-1.,  1., -1.],
+            [ 1.,  1., -1.], [ 1., -1., -1.], [-1., -1., -1.],
+            [ 1.,  1.,  1.], [ 1., -1.,  1.], [ 1., -1., -1.],
+            [-1.,  1.,  1.], [ 1.,  1.,  1.], [ 1.,  1., -1.],
+    ]
+
+    vertices = []
+    for bmin, bmax in zip(bmins, bmaxs):
+        for coor in coors:
+            pos = [bmax[i] if coor[i] > 0 else bmin[i] for i in range(3)]
+            vertices.append(pos)
+
+    ply = ti.PLYWriter(
+            num_vertices=len(vertices),
+            num_faces=len(vertices) // 3)
+    pos = np.array(vertices)
+    ply.add_vertex_pos(pos[:, 0], pos[:, 1], pos[:, 2])
+    ind = np.arange(len(vertices)).reshape(len(vertices) // 3, 3)
+    ply.add_faces(ind)
+    ply.export(path)
+
+
 if __name__ == '__main__':
     ModelPool()
     bvh = LinearBVH(2**16)
@@ -356,9 +388,12 @@ if __name__ == '__main__':
     bvh.genHierarchy()
     bvh.genAABBs()
 
-    n = bvh.n[None]; print(n)
-    print(bvh.leaf.to_numpy()[:n])
-    print(bvh.child.to_numpy()[:n - 1])
-    print(bvh.bmin.to_numpy()[:n - 1])
-    print(bvh.bmax.to_numpy()[:n - 1])
+    n = bvh.n[None]
+    leaf = bvh.leaf.to_numpy()[:n]
+    child = bvh.child.to_numpy()[:n - 1]
+    bmin = bvh.bmin.to_numpy()[:n - 1]
+    bmax = bvh.bmax.to_numpy()[:n - 1]
+
+    export_boxes('/tmp/boxes.ply', bmin, bmax)
+
     exit(1)
