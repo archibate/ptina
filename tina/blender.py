@@ -132,6 +132,7 @@ class TinaRenderPanel(bpy.types.Panel):
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = 'render'
+    bl_order = 0
     COMPAT_ENGINES = {"TINA"}
 
     def draw(self, context):
@@ -356,6 +357,8 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
         output = get_by_name('Material Output')
         bsdf = get_input(output, 'Surface')
+        if not isinstance(bsdf, bpy.types.ShaderNodeBsdfPrincipled):
+            raise RuntimeError('only `Principled BSDF` is supported for now')
 
         def parse_value(value):
             if isinstance(value, bpy.types.ShaderNodeTexImage):
@@ -752,17 +755,16 @@ def get_panels():
         'VIEWLAYER_PT_filter',
         'VIEWLAYER_PT_layer_passes',
     }
-    include_engines = {
-        'CYCLES',
-    }
 
     panels = []
     for panel in bpy.types.Panel.__subclasses__():
         if not hasattr(panel, 'COMPAT_ENGINES'):
             continue
-        if any(engine in panel.COMPAT_ENGINES for engine in include_engines):
-            if panel.__name__ not in exclude_panels:
-                panels.append(panel)
+        if 'CYCLES' not in panel.COMPAT_ENGINES:
+            continue
+        if panel.__name__ in exclude_panels:
+            continue
+        panels.append(panel)
 
     return panels
 
