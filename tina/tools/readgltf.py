@@ -134,8 +134,9 @@ def readgltf(path):
         return (b, bt), (m, mt), (r, rt)
 
 
-    for material in model.materials:
-        materials.append(process_material(material))
+    if model.materials is not None:
+        for material in model.materials:
+            materials.append(process_material(material))
 
 
     def process_primitive(prim, world):

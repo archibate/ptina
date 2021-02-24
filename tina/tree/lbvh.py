@@ -347,42 +347,18 @@ class BVHTree(LinearBVH, metaclass=Singleton):
 
 
 def export_boxes(path, bmins, bmaxs):
-    coors = [
-            [-1.,  1.,  1.], [ 1., -1.,  1.], [ 1.,  1.,  1.],
-            [ 1., -1.,  1.], [-1., -1., -1.], [ 1., -1., -1.],
-            [-1., -1.,  1.], [-1.,  1., -1.], [-1., -1., -1.],
-            [ 1.,  1., -1.], [-1., -1., -1.], [-1.,  1., -1.],
-            [ 1.,  1.,  1.], [ 1., -1., -1.], [ 1.,  1., -1.],
-            [-1.,  1.,  1.], [ 1.,  1., -1.], [-1.,  1., -1.],
-            [-1.,  1.,  1.], [-1., -1.,  1.], [ 1., -1.,  1.],
-            [ 1., -1.,  1.], [-1., -1.,  1.], [-1., -1., -1.],
-            [-1., -1.,  1.], [-1.,  1.,  1.], [-1.,  1., -1.],
-            [ 1.,  1., -1.], [ 1., -1., -1.], [-1., -1., -1.],
-            [ 1.,  1.,  1.], [ 1., -1.,  1.], [ 1., -1., -1.],
-            [-1.,  1.,  1.], [ 1.,  1.,  1.], [ 1.,  1., -1.],
-    ]
-
-    vertices = []
-    for bmin, bmax in zip(bmins, bmaxs):
-        for coor in coors:
-            pos = [bmax[i] if coor[i] > 0 else bmin[i] for i in range(3)]
-            vertices.append(pos)
-
-    ply = ti.PLYWriter(
-            num_vertices=len(vertices),
-            num_faces=len(vertices) // 3)
-    pos = np.array(vertices)
-    ply.add_vertex_pos(pos[:, 0], pos[:, 1], pos[:, 2])
-    ind = np.arange(len(vertices)).reshape(len(vertices) // 3, 3)
-    ply.add_faces(ind)
-    ply.export(path)
+    with open(path, 'w') as f:
+        for bmin, bmax in zip(bmins, bmaxs):
+            print(*bmin, *bmax, file=f)
 
 
 if __name__ == '__main__':
     ModelPool()
     bvh = LinearBVH(2**16)
 
-    ModelPool().load('assets/sphere.obj')
+    from tina.tools.readgltf import readgltf
+    ModelPool().load(readgltf('/tmp/test.gltf')[0])
+    #ModelPool().load('assets/cube.obj')
     bvh.genMortonCodes()
     bvh.sortMortonCodes()
     bvh.genHierarchy()
@@ -394,6 +370,6 @@ if __name__ == '__main__':
     bmin = bvh.bmin.to_numpy()[:n - 1]
     bmax = bvh.bmax.to_numpy()[:n - 1]
 
-    export_boxes('/tmp/boxes.ply', bmin, bmax)
+    export_boxes('/tmp/boxes.txt', bmin, bmax)
 
     exit(1)
