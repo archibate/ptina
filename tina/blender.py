@@ -375,11 +375,24 @@ class TinaRenderEngine(bpy.types.RenderEngine):
                 texture = -1
             return factor, texture
 
-        basecolor = parse_value(get_input(bsdf, 'Base Color'))
-        metallic = parse_value(get_input(bsdf, 'Metallic'))
-        roughness = parse_value(get_input(bsdf, 'Roughness'))
+        def parse_input(name):
+            value = get_input(bsdf, name)
+            return parse_value(value)
 
-        return basecolor + metallic + roughness
+        return (
+            parse_input('Base Color'),
+            parse_input('Metallic'),
+            parse_input('Roughness'),
+            parse_input('Specular'),
+            parse_input('Specular Tint'),
+            parse_input('Subsurface'),
+            parse_input('Sheen'),
+            parse_input('Sheen Tint'),
+            parse_input('Clearcoat'),
+            parse_input('Clearcoat Roughness'),
+            parse_input('Transmission'),
+            parse_input('IOR'),
+            )
 
     def __add_material(self, material, depsgraph):
         print('[TinaBlend] adding material', material.name)
@@ -422,7 +435,6 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
         for update in depsgraph.updates:
             object = update.id
-            print('[TinaBlend] updated datablock:', object)
 
             if isinstance(object, bpy.types.Material):
                 self.__add_material(object, depsgraph)
