@@ -121,14 +121,17 @@ def readgltf(path):
         r = pbr.roughnessFactor
         mrt = pbr.metallicRoughnessTexture
         if bt is not None:
-            bt = images[bt.index]
-        if mrt is not None:
-            mrt = images[mrt.index]
-            mt = mrt[:, :, 2]
-            rt = mrt[:, :, 1]
+            bt = bt.index
         else:
-            mt = rt = None
-        return b, bt, m, mt, r, rt
+            bt = -1
+        if mrt is not None:
+            assert False, 'metallicRoughness texture not supported'
+            #mrt = images[mrt.index]
+            #mt = mrt[:, :, 2]
+            #rt = mrt[:, :, 1]
+        else:
+            mt = rt = -1
+        return (b, bt), (m, mt), (r, rt)
 
 
     for material in model.materials:
@@ -233,7 +236,7 @@ def readgltf(path):
     mtlids = np.concatenate(mtlids, axis=0)
 
     print('[TinaGLTF] loaded', len(mtlids), 'triangles')
-    return vertices, mtlids, materials
+    return vertices, mtlids, materials, images
 
 
 if __name__ == '__main__':

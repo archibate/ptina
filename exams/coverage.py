@@ -8,9 +8,10 @@ init_things()
 PathEngine()
 FilmTable().set_size(512, 512)
 
-vertices, mtlids, materials = readgltf('assets/cornell.gltf')
+vertices, mtlids, materials, images = readgltf('assets/cornell.gltf')
 ModelPool().load(vertices, mtlids)
 MaterialPool().load(materials)
+ImagePool().load(images)
 BVHTree().build()
 
 Camera().set_perspective(np.array([
