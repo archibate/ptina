@@ -144,6 +144,7 @@ class TinaRenderPanel(bpy.types.Panel):
         layout.prop(options, 'start_pixel_size')
 
 
+# {{{
 class TinaMaterialPanel(bpy.types.Panel):
     '''Tina material options'''
 
@@ -179,6 +180,7 @@ class TinaMaterialPanel(bpy.types.Panel):
         layout.prop(options, 'ior')
 
 
+from bl_ui.space_node import NODE_HT_header
 from bl_ui.properties_material import MaterialButtonsPanel
 
 
@@ -244,6 +246,7 @@ class TINA_PT_context_material(MaterialButtonsPanel, bpy.types.Panel):
         elif mat:
             split.template_ID(space, "pin_id")
             split.separator()
+# }}}
 
 
 class TinaRenderEngine(bpy.types.RenderEngine):
@@ -334,19 +337,52 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         return -1
         # import code; code.interact(local=locals())
 
+    def __parse_material(self, material):
+        tree = material.node_tree
+
+        def get_by_name(name):
+            return tree.nodes[name]
+
+        def get_input(node, name):
+            input = node.inputs[name]
+            if input.is_linked:
+                return input.links[0].from_node
+            else:
+                value = input.default_value
+                return value
+
+        def load_image(image):
+            return image
+
+        output = get_by_name('Material Output')
+        bsdf = get_input(output, 'Surface')
+
+        def parse_value(value):
+            if isinstance(value, bpy.types.ShaderNodeTexImage):
+                factor = [1.0] * 4
+                texture = self.__get_image_id(value.image)
+            elif isinstance(value, bpy.types.ShaderNode):
+                raise RuntimeError('shader nodes other than image texture '
+                        'are not supported for now')
+            else:
+                if hasattr(value, '__iter__'):
+                    factor = list(value)
+                else:
+                    factor = [value] * 4
+                texture = -1
+            return factor, texture
+
+        basecolor = parse_value(get_input(bsdf, 'Base Color'))
+        metallic = parse_value(get_input(bsdf, 'Metallic'))
+        roughness = parse_value(get_input(bsdf, 'Roughness'))
+
+        return basecolor + metallic + roughness
+
     def __add_material(self, material, depsgraph):
         print('[TinaBlend] adding material', material.name)
 
         name = material.name
-        material = material.tina
-        basecolor = np.array(material.basecolor)
-        basecolor_texture = self.__get_image_id(material.basecolor_texture)
-        metallic = np.array(material.metallic)
-        metallic_texture = self.__get_image_id(material.metallic_texture)
-        roughness = np.array(material.roughness)
-        roughness_texture = self.__get_image_id(material.roughness_texture)
-        material = (basecolor, basecolor_texture,
-                metallic, metallic_texture, roughness, roughness_texture)
+        material = self.__parse_material(material)
 
         if name not in self.ui_materials:
             self.ui_materials.append(name)
@@ -383,6 +419,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
         for update in depsgraph.updates:
             object = update.id
+            print('[TinaBlend] updated datablock:', object)
 
             if isinstance(object, bpy.types.Material):
                 self.__add_material(object, depsgraph)
@@ -715,15 +752,17 @@ def get_panels():
         'VIEWLAYER_PT_filter',
         'VIEWLAYER_PT_layer_passes',
     }
+    include_engines = {
+        'CYCLES',
+    }
 
     panels = []
     for panel in bpy.types.Panel.__subclasses__():
         if not hasattr(panel, 'COMPAT_ENGINES'):
             continue
-        if 'BLENDER_RENDER' not in panel.COMPAT_ENGINES:
-            continue
-        if panel.__name__ not in exclude_panels:
-            panels.append(panel)
+        if any(engine in panel.COMPAT_ENGINES for engine in include_engines):
+            if panel.__name__ not in exclude_panels:
+                panels.append(panel)
 
     return panels
 
@@ -735,36 +774,16 @@ class TinaRenderProperties(bpy.types.PropertyGroup):
     start_pixel_size: bpy.props.IntProperty(name='Start Pixel Size', min=1, default=8, subtype='PIXEL')
 
 
-class TinaMaterialProperties(bpy.types.PropertyGroup):
-    basecolor: bpy.props.FloatVectorProperty(name='basecolor', subtype='COLOR', min=0, max=1, default=(0.8, 0.8, 0.8))
-    basecolor_texture: bpy.props.PointerProperty(type=bpy.types.Image, name='basecolor')
-    metallic: bpy.props.FloatProperty(name='metallic', min=0, max=1, default=0.0)
-    metallic_texture: bpy.props.PointerProperty(type=bpy.types.Image, name='metallic')
-    roughness: bpy.props.FloatProperty(name='roughness', min=0, max=1, default=0.4)
-    roughness_texture: bpy.props.PointerProperty(type=bpy.types.Image, name='roughness')
-    specular: bpy.props.FloatProperty(name='specular', min=0, max=1, default=0.5)
-    specularTint: bpy.props.FloatProperty(name='specularTint', min=0, max=1, default=0.4)
-    subsurface: bpy.props.FloatProperty(name='subsurface', min=0, max=1, default=0.0)
-    sheen: bpy.props.FloatProperty(name='sheen', min=0, max=1, default=0.0)
-    sheenTint: bpy.props.FloatProperty(name='sheenTint', min=0, max=1, default=0.4)
-    clearcoat: bpy.props.FloatProperty(name='clearcoat', min=0, max=1, default=0.0)
-    clearcoatGloss: bpy.props.FloatProperty(name='clearcoatGloss', min=0, max=1, default=0.5)
-    transmission: bpy.props.FloatProperty(name='transmission', min=0, max=1, default=0.0)
-    ior: bpy.props.FloatProperty(name='IOR', min=1, max=3, default=1.45)
-
-
 def register():
     bpy.utils.register_class(TinaRenderProperties)
-    bpy.utils.register_class(TinaMaterialProperties)
 
     bpy.types.Scene.tina_render = bpy.props.PointerProperty(name='tina', type=TinaRenderProperties)
-    bpy.types.Material.tina = bpy.props.PointerProperty(name='tina', type=TinaMaterialProperties)
 
     bpy.utils.register_class(TinaRenderEngine)
     bpy.utils.register_class(TinaLightPanel)
     bpy.utils.register_class(TinaRenderPanel)
-    bpy.utils.register_class(TinaMaterialPanel)
-    bpy.utils.register_class(TINA_PT_context_material)
+    #bpy.utils.register_class(TinaMaterialPanel)
+    #bpy.utils.register_class(TINA_PT_context_material)
 
     for panel in get_panels():
         panel.COMPAT_ENGINES.add('TINA')
@@ -774,15 +793,13 @@ def unregister():
     bpy.utils.unregister_class(TinaRenderEngine)
     bpy.utils.unregister_class(TinaLightPanel)
     bpy.utils.unregister_class(TinaRenderPanel)
-    bpy.utils.unregister_class(TinaMaterialPanel)
-    bpy.utils.unregister_class(TINA_PT_context_material)
+    #bpy.utils.unregister_class(TinaMaterialPanel)
+    #bpy.utils.unregister_class(TINA_PT_context_material)
 
     for panel in get_panels():
         if 'TINA' in panel.COMPAT_ENGINES:
             panel.COMPAT_ENGINES.remove('TINA')
 
     del bpy.types.Scene.tina_render
-    del bpy.types.Material.tina
 
     bpy.utils.unregister_class(TinaRenderProperties)
-    bpy.utils.unregister_class(TinaMaterialProperties)
