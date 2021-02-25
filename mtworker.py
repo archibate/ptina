@@ -62,11 +62,6 @@ class DaemonModule:
 
             return self._wrap(retval)
 
-        def promise(callback):
-            callback(wrapped())
-
-        wrapped.promise = promise
-
         return wrapped
 
     def __getattr__(self, name):

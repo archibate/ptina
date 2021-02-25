@@ -651,18 +651,22 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
             self.update_stats('Rendering', f'{self.nsamples}/{max_samples} Samples')
 
-            if is_preview:
-                promise = worker.render_preview.promise
-            else:
-                promise = worker.render.promise
+            render = worker.render_preview if is_preview else worker.render
+            do_tag_redraw = self.nsamples < max_samples or self.nblocks != 0
+            self.nblocks //= 2
 
-            @promise
-            def _(_):
+            @mtworker.DaemonThread
+            def waiter():
+                print('[TinaBlend] rendering draw data')
+                render()
+                print('[TinaBlend] updating draw data')
                 self.draw_data = TinaDrawData(dimensions, perspective, is_preview)
-                if self.nsamples < max_samples or self.nblocks != 0:
+                print('[TinaBlend] update draw data done')
+                if do_tag_redraw:
+                    print('[TinaBlend] tagging for redraw')
                     self.tag_redraw()
 
-                self.nblocks //= 2
+            waiter.start()
 
     # For viewport renders, this method is called whenever Blender redraws
     # the 3D viewport. The renderer is expected to quickly draw the render
@@ -686,7 +690,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
 class TinaDrawData:
     def __init__(self, dimensions, perspective, is_preview):
-        print('[TinaBlend] redraw!')
+        self.initialized = False
         # Generate dummy float image buffer
         self.dimensions = dimensions
         self.perspective = perspective
@@ -696,7 +700,6 @@ class TinaDrawData:
         self.resx, self.resy = worker.get_size()
         self.pixels_np = np.empty(self.resx * self.resy * 3, np.float32)
         worker.fast_export_image(self.pixels_np, 1 if is_preview else 0)
-        self.initialized = False
 
     def try_initialize(self):
         if self.initialized:
