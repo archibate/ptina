@@ -102,6 +102,8 @@ def blender_get_image_pixels(image):
     arr = np.array(image.pixels)
     arr = arr.reshape((image.size[1], image.size[0], image.channels))
     arr = arr.swapaxes(0, 1)
+    if image.colorspace_settings.name == 'sRGB':
+        arr = arr**2.2
     return arr
 
 
@@ -381,11 +383,11 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             raise RuntimeError('only `Background` node is supported for now')
 
         def parse_value(value):
-            if isinstance(value, bpy.types.ShaderNodeTexImage):
+            if isinstance(value, bpy.types.ShaderNodeTexEnvironment):
                 factor = [1.0] * 4
                 texture = self.__get_image_id(value.image)
             elif isinstance(value, bpy.types.ShaderNode):
-                raise RuntimeError('shader nodes other than image texture '
+                raise RuntimeError('shader nodes other than environment texture '
                         'are not supported for now')
             else:
                 if hasattr(value, '__iter__'):
@@ -395,14 +397,12 @@ class TinaRenderEngine(bpy.types.RenderEngine):
                 texture = -1
             return factor, texture
 
-        def parse_input(name):
-            value = get_input(bsdf, name)
-            return parse_value(value)
-
-        factor, texture = parse_input('Color')
-        strength, notexture = parse_input('Strength')
-        assert notexture == -1, 'strength socket does not support texture for now'
-        factor = [x * strength[0] for x in factor]
+        factor, texture = parse_value(get_input(bsdf, 'Color'))
+        strength = get_input(bsdf, 'Strength')
+        if isinstance(strength, bpy.types.ShaderNode):
+            raise RuntimeError('strength socket does not support texture for now')
+        strength = float(strength)
+        factor = [x * strength for x in factor]
 
         self.world_light = factor, texture
 
