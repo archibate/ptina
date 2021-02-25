@@ -16,7 +16,7 @@ if 1:
         @mtworker.DaemonModule
         def worker():
             print('[TinaBlend] importing worker')
-            if 0:
+            if 1:
                 from tina import worker
             else:
                 import dummy_worker as worker
@@ -267,6 +267,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         self.scene_data = None
         self.draw_data = None
         self.closed_draws = []
+        self.waiting = False
 
         self.object_to_mesh = {}
         self.object_to_light = {}
@@ -615,6 +616,11 @@ class TinaRenderEngine(bpy.types.RenderEngine):
                 pass
 
     def my_draw(self, context, depsgraph):
+        if self.waiting:
+            return
+
+        self.waiting = True
+
         region = context.region
         region3d = context.region_data
         view3d = context.space_data
@@ -667,6 +673,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
                 if self.draw_data:
                     self.closed_draws.append(self.draw_data)
                 self.draw_data = TinaDrawData(dimensions, perspective, is_preview)
+                self.waiting = False
                 if do_tag_redraw:
                     self.tag_redraw()
 
