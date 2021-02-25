@@ -20,7 +20,7 @@ if 1:
             if 1:
                 from tina import worker
             else:
-                import dummy_worker as worker
+                from scripts import dummy_worker as worker
             print('[TinaBlend] importing worker done')
             return worker
 
@@ -108,12 +108,12 @@ def blender_get_image_pixels(image):
 class TinaLightPanel(bpy.types.Panel):
     '''Tina light options'''
 
+    COMPAT_ENGINES = {"TINA"}
     bl_label = 'Tina Light'
     bl_idname = 'DATA_PT_tina'
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = 'data'
-    COMPAT_ENGINES = {"TINA"}
 
     def draw(self, context):
         layout = self.layout
@@ -131,13 +131,12 @@ class TinaLightPanel(bpy.types.Panel):
 class TinaRenderPanel(bpy.types.Panel):
     '''Tina render options'''
 
+    COMPAT_ENGINES = {"TINA"}
     bl_label = 'Tina Render'
     bl_idname = 'RENDER_PT_tina'
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = 'render'
-    bl_order = 0
-    COMPAT_ENGINES = {"TINA"}
 
     def draw(self, context):
         layout = self.layout
@@ -151,16 +150,32 @@ class TinaRenderPanel(bpy.types.Panel):
         layout.prop(options, 'update_interval')
 
 
+class TinaWorldPanel(bpy.types.Panel):
+    '''Tina world options'''
+
+    COMPAT_ENGINES = {"TINA"}
+
+    bl_label = 'Tina World'
+    bl_idname = 'WORLD_PT_tina'
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = 'world'
+
+    def draw(self, context):
+        layout = self.layout
+        world = context.scene.world
+
+
 # {{{
 class TinaMaterialPanel(bpy.types.Panel):
     '''Tina material options'''
 
+    COMPAT_ENGINES = {"TINA"}
     bl_label = 'Tina Material'
     bl_idname = 'MATERIAL_PT_tina'
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = 'material'
-    COMPAT_ENGINES = {"TINA"}
 
     def draw(self, context):
         layout = self.layout
@@ -278,8 +293,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         self.materials = []
         self.ui_images = []
         self.images = []
-        self.images_updated = set()
-        self.meshes_updated = set()
+        self.world_light = None
         self.nblocks = 0
         self.nsamples = 0
 
@@ -348,11 +362,10 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         return -1
         # import code; code.interact(local=locals())
 
-    def __parse_material(self, material):
-        tree = material.node_tree
+    def __add_world(self, world, depsgraph):
+        print('[TinaBlend] adding world', world.name)
 
-        def get_by_name(name):
-            return tree.nodes[name]
+        tree = world.node_tree
 
         def get_input(node, name):
             input = node.inputs[name]
@@ -362,10 +375,49 @@ class TinaRenderEngine(bpy.types.RenderEngine):
                 value = input.default_value
                 return value
 
-        def load_image(image):
-            return image
+        output = tree.nodes['World Output']
+        bsdf = get_input(output, 'Surface')
+        if not isinstance(bsdf, bpy.types.ShaderNodeBackground):
+            raise RuntimeError('only `Background` node is supported for now')
 
-        output = get_by_name('Material Output')
+        def parse_value(value):
+            if isinstance(value, bpy.types.ShaderNodeTexImage):
+                factor = [1.0] * 4
+                texture = self.__get_image_id(value.image)
+            elif isinstance(value, bpy.types.ShaderNode):
+                raise RuntimeError('shader nodes other than image texture '
+                        'are not supported for now')
+            else:
+                if hasattr(value, '__iter__'):
+                    factor = list(value)
+                else:
+                    factor = [value] * 4
+                texture = -1
+            return factor, texture
+
+        def parse_input(name):
+            value = get_input(bsdf, name)
+            return parse_value(value)
+
+        factor, texture = parse_input('Color')
+        strength, notexture = parse_input('Strength')
+        assert notexture == -1, 'strength socket does not support texture for now'
+        factor = [x * strength[0] for x in factor]
+
+        self.world_light = factor, texture
+
+    def __parse_material(self, material):
+        tree = material.node_tree
+
+        def get_input(node, name):
+            input = node.inputs[name]
+            if input.is_linked:
+                return input.links[0].from_node
+            else:
+                value = input.default_value
+                return value
+
+        output = tree.nodes['Material Output']
         bsdf = get_input(output, 'Surface')
         if not isinstance(bsdf, bpy.types.ShaderNodeBsdfPrincipled):
             raise RuntimeError('only `Principled BSDF` is supported for now')
@@ -420,14 +472,16 @@ class TinaRenderEngine(bpy.types.RenderEngine):
     def __setup_scene(self, depsgraph):
         print('[TinaBlend] setup scene')
 
-        self.update_stats('Initializing', 'Loading scene')
-
         scene = depsgraph.scene
         options = scene.tina_render
 
         for object in depsgraph.ids:
             if isinstance(object, bpy.types.Material):
                 self.__add_material(object, depsgraph)
+
+            if isinstance(object, bpy.types.World):
+                if scene.world.name == object.name:
+                    self.__add_world(object, depsgraph)
 
         for object in depsgraph.ids:
             if isinstance(object, bpy.types.Object):
@@ -441,6 +495,8 @@ class TinaRenderEngine(bpy.types.RenderEngine):
     def __update_scene(self, depsgraph):
         print('[TinaBlend] update scene')
 
+        scene = depsgraph.scene
+
         need_update = False
 
         for update in depsgraph.updates:
@@ -449,6 +505,11 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             if isinstance(object, bpy.types.Material):
                 self.__add_material(object, depsgraph)
                 need_update = True
+
+            if isinstance(object, bpy.types.World):
+                if scene.world.name == object.name:
+                    self.__add_world(object, depsgraph)
+                    need_update = True
 
         for update in depsgraph.updates:
             object = update.id
@@ -503,6 +564,10 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         self.update_stats('Initializing', 'Constructing tree')
         worker.build_tree()
 
+        self.update_stats('Initializing', 'Updating world light')
+        if self.world_light is not None:
+            worker.set_world_light(*self.world_light)
+
         self.update_stats('Initializing', 'Updating lights')
         worker.clear_lights()
         for world, color, size, type in self.object_to_light.values():
@@ -532,6 +597,8 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         self.size_x = int(scene.render.resolution_x * scale)
         self.size_y = int(scene.render.resolution_y * scale)
         view, proj = calc_camera_matrices(depsgraph)
+
+        self.update_stats('Initializing', 'Loading scene')
 
         self.__setup_scene(depsgraph)
         self.__update_camera(proj @ view)
@@ -855,6 +922,7 @@ def register():
     bpy.utils.register_class(TinaRenderEngine)
     bpy.utils.register_class(TinaLightPanel)
     bpy.utils.register_class(TinaRenderPanel)
+    #bpy.utils.register_class(TinaWorldPanel)
     #bpy.utils.register_class(TinaMaterialPanel)
     #bpy.utils.register_class(TINA_PT_context_material)
 
@@ -866,6 +934,7 @@ def unregister():
     bpy.utils.unregister_class(TinaRenderEngine)
     bpy.utils.unregister_class(TinaLightPanel)
     bpy.utils.unregister_class(TinaRenderPanel)
+    #bpy.utils.unregister_class(TinaWorldPanel)
     #bpy.utils.unregister_class(TinaMaterialPanel)
     #bpy.utils.unregister_class(TINA_PT_context_material)
 

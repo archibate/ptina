@@ -49,6 +49,10 @@ def clear_lights():
     LightPool().clear()
 
 
+def set_world_light(fac, tex):
+    WorldLight().set(fac, tex)
+
+
 def add_light(world, color, size, type):
     LightPool().add(world, color, size, type)
 
