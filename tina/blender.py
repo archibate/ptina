@@ -610,14 +610,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             for instance in depsgraph.object_instances:
                 pass
 
-    # For viewport renders, this method is called whenever Blender redraws
-    # the 3D viewport. The renderer is expected to quickly draw the render
-    # with OpenGL, and not perform other expensive work.
-    # Blender will draw overlays for selection and editing on top of the
-    # rendered image automatically.
-    def view_draw(self, context, depsgraph):
-        print('[TinaBlend] view_draw')
-
+    def my_draw(self, context, depsgraph):
         region = context.region
         region3d = context.region_data
         view3d = context.space_data
@@ -631,11 +624,6 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         # Get viewport dimensions
         dimensions = region.width, region.height
         perspective = region3d.perspective_matrix.to_4x4()
-
-        # Bind shader that converts from scene linear to display space,
-        bgl.glEnable(bgl.GL_BLEND)
-        bgl.glBlendFunc(bgl.GL_ONE, bgl.GL_ONE_MINUS_SRC_ALPHA)
-        self.bind_display_space_shader(scene)
 
         if not self.draw_data or self.draw_data.dimensions != dimensions \
                 or self.draw_data.is_preview != is_preview \
@@ -674,8 +662,22 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
             self.nblocks //= 2
 
-        self.draw_data.draw()
+    # For viewport renders, this method is called whenever Blender redraws
+    # the 3D viewport. The renderer is expected to quickly draw the render
+    # with OpenGL, and not perform other expensive work.
+    # Blender will draw overlays for selection and editing on top of the
+    # rendered image automatically.
+    def view_draw(self, context, depsgraph):
+        print('[TinaBlend] view_draw')
 
+        self.my_draw(context, depsgraph)
+
+        # Bind shader that converts from scene linear to display space,
+        bgl.glEnable(bgl.GL_BLEND)
+        bgl.glBlendFunc(bgl.GL_ONE, bgl.GL_ONE_MINUS_SRC_ALPHA)
+        self.bind_display_space_shader(scene)
+        if self.draw_data:
+            self.draw_data.draw()
         self.unbind_display_space_shader()
         bgl.glDisable(bgl.GL_BLEND)
 
