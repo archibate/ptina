@@ -66,11 +66,12 @@ class ImagePool(metaclass=Singleton):
         self.idman.free(id)
         self.mman.free(base)
 
-    def load_one(self, arr):
+    def load_one(self, arr, srgb=True):
         if isinstance(arr, str):
             arr = ti.imread(arr)
         if arr.dtype == np.uint8:
             arr = arr.astype(np.float32) / 255
+        if srgb:
             arr = arr**2.2
 
         nx, ny = arr.shape[0], arr.shape[1]
