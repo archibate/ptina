@@ -71,6 +71,7 @@ class ImagePool(metaclass=Singleton):
             arr = ti.imread(arr)
         if arr.dtype == np.uint8:
             arr = arr.astype(np.float32) / 255
+            arr = arr**2.2
 
         nx, ny = arr.shape[0], arr.shape[1]
         if len(arr.shape) == 2:

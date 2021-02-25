@@ -653,7 +653,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             if self.nblocks != 0:
                 width //= self.nblocks
                 height //= self.nblocks
-            if pixel_scale:
+            if pixel_scale != 0:
                 width //= pixel_scale
                 height //= pixel_scale
             worker.set_size(width, height)
