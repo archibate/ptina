@@ -146,6 +146,7 @@ class TinaRenderPanel(bpy.types.Panel):
         layout.prop(options, 'viewport_samples')
         layout.prop(options, 'albedo_samples')
         layout.prop(options, 'start_pixel_size')
+        layout.prop(options, 'pixel_scale')
 
 
 # {{{
@@ -626,6 +627,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         view3d = context.space_data
         scene = depsgraph.scene
         max_samples = scene.tina_render.viewport_samples
+        pixel_scale = scene.tina_render.pixel_scale
 
         is_preview = view3d.shading.type == 'MATERIAL'
         if is_preview:
@@ -642,6 +644,9 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             if self.nblocks != 0:
                 width //= self.nblocks
                 height //= self.nblocks
+            if pixel_scale:
+                width //= pixel_scale
+                height //= pixel_scale
             worker.set_size(width, height)
 
         if not self.draw_data or self.draw_data.dimensions != dimensions \
@@ -671,6 +676,11 @@ class TinaRenderEngine(bpy.types.RenderEngine):
                 render()
                 print('[TinaBlend] updating draw data')
                 draw_data = TinaDrawData(dimensions, perspective, is_preview)
+                try:
+                    bool(self.draw_data)
+                except ReferenceError:
+                    self.waiting = False
+                    return
                 if self.draw_data:
                     self.draw_data, draw_data = draw_data, self.draw_data
                     self.closed_draws.append(draw_data)
@@ -826,7 +836,8 @@ class TinaRenderProperties(bpy.types.PropertyGroup):
     render_samples: bpy.props.IntProperty(name='Render Samples', min=1, default=128)
     viewport_samples: bpy.props.IntProperty(name='Viewport Samples', min=1, default=32)
     albedo_samples: bpy.props.IntProperty(name='Albedo Samples', min=1, default=32)
-    start_pixel_size: bpy.props.IntProperty(name='Start Pixel Size', min=1, default=8, subtype='PIXEL')
+    start_pixel_size: bpy.props.IntProperty(name='Start Pixel Size', min=1, default=16, subtype='PIXEL')
+    pixel_scale: bpy.props.IntProperty(name='Pixel Scale', min=1, default=1, subtype='PIXEL')
 
 
 def register():
