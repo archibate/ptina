@@ -1,7 +1,5 @@
-/three
 /build
 /assets
-__pycache__
-/sobol*
+__pycache__/
+/dummy_worker.py
 /tags
-tina/sobol_data.py

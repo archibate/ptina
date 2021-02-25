@@ -16,7 +16,10 @@ if 1:
         @mtworker.DaemonModule
         def worker():
             print('[TinaBlend] importing worker')
-            from tina import worker
+            if 0:
+                from tina import worker
+            else:
+                import dummy_worker as worker
             print('[TinaBlend] importing worker done')
             return worker
 
@@ -263,6 +266,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
     def __init__(self):
         self.scene_data = None
         self.draw_data = None
+        self.closed_draws = []
 
         self.object_to_mesh = {}
         self.object_to_light = {}
@@ -660,10 +664,10 @@ class TinaRenderEngine(bpy.types.RenderEngine):
                 print('[TinaBlend] rendering draw data')
                 render()
                 print('[TinaBlend] updating draw data')
+                if self.draw_data:
+                    self.closed_draws.append(self.draw_data)
                 self.draw_data = TinaDrawData(dimensions, perspective, is_preview)
-                print('[TinaBlend] update draw data done')
                 if do_tag_redraw:
-                    print('[TinaBlend] tagging for redraw')
                     self.tag_redraw()
 
             waiter.start()
@@ -682,6 +686,8 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         bgl.glEnable(bgl.GL_BLEND)
         bgl.glBlendFunc(bgl.GL_ONE, bgl.GL_ONE_MINUS_SRC_ALPHA)
         self.bind_display_space_shader(scene)
+        while self.closed_draws:
+            self.closed_draws.pop(0).close()
         if self.draw_data:
             self.draw_data.draw()
         self.unbind_display_space_shader()
@@ -759,7 +765,7 @@ class TinaDrawData:
         bgl.glBindBuffer(bgl.GL_ARRAY_BUFFER, 0)
         bgl.glBindVertexArray(0)
 
-    def __del__(self):
+    def close(self):
         if not self.initialized:
             return
 
