@@ -652,15 +652,17 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             self.update_stats('Rendering', f'{self.nsamples}/{max_samples} Samples')
 
             if is_preview:
-                worker.render_preview()
+                promise = worker.render_preview.promise
             else:
-                worker.render()
-            self.draw_data = TinaDrawData(dimensions, perspective, is_preview)
+                promise = worker.render.promise
 
-            if self.nsamples < max_samples or self.nblocks != 0:
-                self.tag_redraw()
+            @promise
+            def _(_):
+                self.draw_data = TinaDrawData(dimensions, perspective, is_preview)
+                if self.nsamples < max_samples or self.nblocks != 0:
+                    self.tag_redraw()
 
-            self.nblocks //= 2
+                self.nblocks //= 2
 
     # For viewport renders, this method is called whenever Blender redraws
     # the 3D viewport. The renderer is expected to quickly draw the render
@@ -669,9 +671,9 @@ class TinaRenderEngine(bpy.types.RenderEngine):
     # rendered image automatically.
     def view_draw(self, context, depsgraph):
         print('[TinaBlend] view_draw')
-
         self.my_draw(context, depsgraph)
 
+        scene = depsgraph.scene
         # Bind shader that converts from scene linear to display space,
         bgl.glEnable(bgl.GL_BLEND)
         bgl.glBlendFunc(bgl.GL_ONE, bgl.GL_ONE_MINUS_SRC_ALPHA)
@@ -691,11 +693,20 @@ class TinaDrawData:
         self.is_preview = is_preview
         width, height = dimensions
 
-        resx, resy = worker.get_size()
+        self.resx, self.resy = worker.get_size()
+        self.pixels_np = np.empty(self.resx * self.resy * 3, np.float32)
+        worker.fast_export_image(self.pixels_np, 1 if is_preview else 0)
+        self.initialized = False
 
-        pixels = np.empty(resx * resy * 3, np.float32)
-        worker.fast_export_image(pixels, 1 if is_preview else 0)
-        self.pixels = bgl.Buffer(bgl.GL_FLOAT, resx * resy * 3, pixels)
+    def try_initialize(self):
+        if self.initialized:
+            return
+
+        self.initialized = True
+
+        resx, resy = self.resx, self.resy
+        width, height = self.dimensions
+        self.pixels = bgl.Buffer(bgl.GL_FLOAT, resx * resy * 3, self.pixels_np)
 
         # Generate texture
         self.texture = bgl.Buffer(bgl.GL_INT, 1)
@@ -746,12 +757,16 @@ class TinaDrawData:
         bgl.glBindVertexArray(0)
 
     def __del__(self):
+        if not self.initialized:
+            return
+
         bgl.glDeleteBuffers(2, self.vertex_buffer)
         bgl.glDeleteVertexArrays(1, self.vertex_array)
         bgl.glBindTexture(bgl.GL_TEXTURE_2D, 0)
         bgl.glDeleteTextures(1, self.texture)
 
     def draw(self):
+        self.try_initialize()
         bgl.glActiveTexture(bgl.GL_TEXTURE0)
         bgl.glBindTexture(bgl.GL_TEXTURE_2D, self.texture[0])
         bgl.glBindVertexArray(self.vertex_array[0])

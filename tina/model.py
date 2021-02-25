@@ -3,7 +3,7 @@ triangle mesh model storage in Taichi memory
 '''
 
 from tina.geometries import *
-#from tina.mtllib import *
+from tina.mtllib import *
 
 
 @ti.data_oriented
