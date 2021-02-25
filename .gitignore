@@ -1,5 +1,7 @@
 /build
 /assets
+/outputs
+/scripts
 __pycache__/
 /dummy_worker.py
 /tags

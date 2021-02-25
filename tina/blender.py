@@ -6,6 +6,7 @@ references: https://docs.blender.org/api/current/bpy.types.RenderEngine.html
 
 import bpy
 import bgl
+import time
 import numpy as np
 
 
@@ -147,6 +148,7 @@ class TinaRenderPanel(bpy.types.Panel):
         layout.prop(options, 'albedo_samples')
         layout.prop(options, 'start_pixel_size')
         layout.prop(options, 'pixel_scale')
+        layout.prop(options, 'update_interval')
 
 
 # {{{
@@ -540,6 +542,9 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         for id in range(len(self.render_passes)):
             worker.clear(id)
 
+        t0 = time.time()
+        interval = scene.tina_render.update_interval
+
         nsamples = scene.tina_render.render_samples
         for samp in range(nsamples):
             self.update_stats('Rendering', f'{samp}/{nsamples} Samples')
@@ -551,15 +556,21 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             if samp < scene.tina_render.albedo_samples:
                 worker.render_preview()
 
-            for id, (name, channels, type) in enumerate(self.render_passes):
-                img = worker.get_image(id)
-                img = np.ascontiguousarray(img.swapaxes(0, 1))
-                img = img.reshape(self.size_x * self.size_y, 4)
-                if len(channels) != 4:
-                    img = img[:, :len(channels)]
-                layer.passes[name].rect = img.tolist()
+            do_update = time.time() - t0 > interval
 
-            self.update_result(result)
+            if do_update or samp == 0 or samp == nsamples - 1:
+                print('[TinaBlend] updating film at', samp, 'samples')
+                for id, (name, channels, type) in enumerate(self.render_passes):
+                    img = worker.get_image(id)
+                    img = np.ascontiguousarray(img.swapaxes(0, 1))
+                    img = img.reshape(self.size_x * self.size_y, 4)
+                    if len(channels) != 4:
+                        img = img[:, :len(channels)]
+                    layer.passes[name].rect = img.tolist()
+
+                self.update_result(result)
+                t0 = time.time()
+
         else:
             self.update_progress(1.0)
 
@@ -630,8 +641,6 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         pixel_scale = scene.tina_render.pixel_scale
 
         is_preview = view3d.shading.type == 'MATERIAL'
-        if is_preview:
-            max_samples = min(max_samples, scene.tina_render.albedo_samples)
 
         # Get viewport dimensions
         dimensions = region.width, region.height
@@ -676,11 +685,6 @@ class TinaRenderEngine(bpy.types.RenderEngine):
                 render()
                 print('[TinaBlend] updating draw data')
                 draw_data = TinaDrawData(dimensions, perspective, is_preview)
-                try:
-                    bool(self.draw_data)
-                except ReferenceError:
-                    self.waiting = False
-                    return
                 if self.draw_data:
                     self.draw_data, draw_data = draw_data, self.draw_data
                     self.closed_draws.append(draw_data)
@@ -714,7 +718,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         if self.draw_data:
             self.draw_data.draw()
         else:
-            print('[TinaBlend] no draw data!!')
+            print('[TinaBlend] no draw data, please wait')
         self.unbind_display_space_shader()
         bgl.glDisable(bgl.GL_BLEND)
 
@@ -835,9 +839,10 @@ def get_panels():
 class TinaRenderProperties(bpy.types.PropertyGroup):
     render_samples: bpy.props.IntProperty(name='Render Samples', min=1, default=128)
     viewport_samples: bpy.props.IntProperty(name='Viewport Samples', min=1, default=32)
-    albedo_samples: bpy.props.IntProperty(name='Albedo Samples', min=1, default=32)
+    albedo_samples: bpy.props.IntProperty(name='Albedo Samples', min=0, default=0)
     start_pixel_size: bpy.props.IntProperty(name='Start Pixel Size', min=1, default=16, subtype='PIXEL')
     pixel_scale: bpy.props.IntProperty(name='Pixel Scale', min=1, default=1, subtype='PIXEL')
+    update_interval: bpy.props.FloatProperty(name='Update Interval', min=0, default=10, subtype='TIME')
 
 
 def register():
