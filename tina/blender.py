@@ -617,8 +617,8 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
     def my_draw(self, context, depsgraph):
         if self.waiting:
+            print('[TinaBlend] draw data busy')
             return
-
         self.waiting = True
 
         region = context.region
@@ -670,14 +670,20 @@ class TinaRenderEngine(bpy.types.RenderEngine):
                 print('[TinaBlend] rendering draw data')
                 render()
                 print('[TinaBlend] updating draw data')
+                draw_data = TinaDrawData(dimensions, perspective, is_preview)
                 if self.draw_data:
-                    self.closed_draws.append(self.draw_data)
-                self.draw_data = TinaDrawData(dimensions, perspective, is_preview)
+                    self.draw_data, draw_data = draw_data, self.draw_data
+                    self.closed_draws.append(draw_data)
+                else:
+                    self.draw_data = draw_data
                 self.waiting = False
                 if do_tag_redraw:
                     self.tag_redraw()
 
             waiter.start()
+
+        else:
+            self.waiting = False
 
     # For viewport renders, this method is called whenever Blender redraws
     # the 3D viewport. The renderer is expected to quickly draw the render
@@ -697,6 +703,8 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             self.closed_draws.pop(0).close()
         if self.draw_data:
             self.draw_data.draw()
+        else:
+            print('[TinaBlend] no draw data!!')
         self.unbind_display_space_shader()
         bgl.glDisable(bgl.GL_BLEND)
 
