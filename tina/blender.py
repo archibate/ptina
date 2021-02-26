@@ -920,7 +920,7 @@ def register():
     bpy.types.Scene.tina_render = bpy.props.PointerProperty(name='tina', type=TinaRenderProperties)
 
     bpy.utils.register_class(TinaRenderEngine)
-    bpy.utils.register_class(TinaLightPanel)
+    #bpy.utils.register_class(TinaLightPanel)
     bpy.utils.register_class(TinaRenderPanel)
     #bpy.utils.register_class(TinaWorldPanel)
     #bpy.utils.register_class(TinaMaterialPanel)
@@ -932,7 +932,7 @@ def register():
 
 def unregister():
     bpy.utils.unregister_class(TinaRenderEngine)
-    bpy.utils.unregister_class(TinaLightPanel)
+    #bpy.utils.unregister_class(TinaLightPanel)
     bpy.utils.unregister_class(TinaRenderPanel)
     #bpy.utils.unregister_class(TinaWorldPanel)
     #bpy.utils.unregister_class(TinaMaterialPanel)

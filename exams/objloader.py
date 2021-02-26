@@ -8,7 +8,7 @@ from tina.tools.readobj import readobj
 ti.init(ti.cuda)
 init_things()
 PathEngine()
-FilmTable().set_size(512, 512)
+FilmTable().set_size(256, 256)
 
 vertices = readobj('assets/monkey.obj')
 ModelPool().load(vertices)

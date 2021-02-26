@@ -24,5 +24,6 @@ class WorldLight(metaclass=Singleton):
         fac = self.fac[None]
         texid = self.tex[None]
         if texid != -1:
+            dir.y, dir.z = dir.z, -dir.y  # for blender axes
             fac *= Image(texid)(*dir2tex(dir))
         return fac.xyz

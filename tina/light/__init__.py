@@ -81,7 +81,7 @@ class LightPool(metaclass=Singleton):
         return ret
 
     @ti.func
-    def sample(self, hitpos, samp):
+    def _sample(self, hitpos, samp):
         i = clamp(ifloor(samp.z * self.count[None]), 0, self.count[None])
 
         type = self.type[i]
@@ -112,3 +112,10 @@ class LightPool(metaclass=Singleton):
         if Vany(norm != 0):
             color *= dot_or_zero(norm, dir)
         return namespace(dis=dis, dir=dir, pdf=pdf, color=color)
+
+    @ti.func
+    def sample(self, hitpos, samp):
+        ret = namespace(dis=inf, dir=V3(0.0), pdf=0.0, color=V3(0.0))
+        if self.count[None] != 0:
+            ret = self._sample(hitpos, samp)
+        return ret
