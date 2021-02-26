@@ -11,7 +11,7 @@ import numpy as np
 
 
 if 1:
-    import mtworker
+    from tina.tools import mtworker
     @mtworker.OnDemandProxy
     def worker():
         @mtworker.DaemonModule
