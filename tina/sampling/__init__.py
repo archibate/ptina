@@ -62,3 +62,14 @@ class RNGProxy:
         ret = self.data[self.i, self.j]
         self.j += 1
         return ret
+
+
+@ti.data_oriented
+class RNGShift:
+    def __init__(self, rng, shift):
+        self.rng = rng
+        self.shift = ti.expr_init(shift)
+
+    @ti.func
+    def random(self):
+        return (self.rng.random() + self.shift) % 1

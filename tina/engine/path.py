@@ -79,11 +79,49 @@ class PathEngine(metaclass=Singleton):
     def _render(self):
         for i, j in ti.static(GSL(FilmTable().nx, FilmTable().ny)):
             rng = self.get_rng(i, j)
+            self.do_render(rng, i, j)
 
-            dx, dy = random2(rng)
-            x = (i + dx) / FilmTable().nx * 2 - 1
-            y = (j + dy) / FilmTable().ny * 2 - 1
-            ray = Camera().generate(x, y)
+    @ti.func
+    def do_render(self, rng, i, j):
+        dx, dy = random2(rng)
+        x = (i + dx) / FilmTable().nx * 2 - 1
+        y = (j + dy) / FilmTable().ny * 2 - 1
+        ray = Camera().generate(x, y)
 
-            clr = path_trace(ray, rng)
-            FilmTable()[0, i, j] += V34(clr, 1.0)
+        clr = path_trace(ray, rng)
+        FilmTable()[0, i, j] += V34(clr, 1.0)
+
+    '''
+    def render_tile(self, i, j, samples):
+        SobolSampler().update()
+        self._render_tile(i, j, samples)
+
+    @ti.kernel
+    def _render_tile(self, i: int, j: int, samples: int):
+        for id in range(64**3):
+            m = id % 64
+            l = id // 64 % 64
+            k = id // 64**2
+
+            x = i * 64 + k
+            y = j * 64 + l
+            if x > FilmTable().nx:
+                continue
+            if y > FilmTable().ny:
+                continue
+            if m > samples:
+                continue
+            rng = SobolSampler().get_proxy(wanghash3(x, y, m))
+            Stack().set(id)
+            self.do_render(rng, x, y)
+            Stack().unset()
+
+    def render_final(self, nsamples):
+        for i in range((FilmTable().nx + 63) // 64):
+            for j in range((FilmTable().ny + 63) // 64):
+                print('[TinaPath] rendering tile', i, j)
+                samples = nsamples
+                while samples > 0:
+                    self.render_tile(i, j, samples)
+                    samples -= 64
+    '''
