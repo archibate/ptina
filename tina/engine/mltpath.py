@@ -35,16 +35,17 @@ class MLTPathEngine(metaclass=Singleton):
 
     @ti.kernel
     def _inc_film_count(self):
-        '''
+        #'''
         for i, j in ti.ndrange(FilmTable().nx, FilmTable().ny):
-            #impo = 2.0 * self.nchains / (FilmTable().nx * FilmTable().ny)
-            impo = 0.0
+            impo = 2.0 * self.nchains / (FilmTable().nx * FilmTable().ny)
+            #impo = 0.0
             FilmTable()[0, i, j].w += impo
-        '''
+        #'''
 
     @ti.func
     def splat(self, x, y, color):
-        impo = 1.0
+        #impo = 1.0
+        impo = 0.0
         i, j = ifloor(V(x * FilmTable().nx, y * FilmTable().ny))
         FilmTable()[0, i, j] += V34(color, impo)
 
@@ -69,8 +70,11 @@ class MLTPathEngine(metaclass=Singleton):
             AL_new = Vavg(self.L_new[i]) + 1e-10
             AL_old = Vavg(self.L_old[i]) + 1e-10
             accept = min(1, AL_new / AL_old)
-            L = self.L_new[i]# * max(1, AL_old / AL_new)
-            self.splat(self.X_new[i, 0], self.X_new[i, 1], L)
+            #L_new = self.L_new[i] * (1 - rate) / AL_new
+            #L_old = self.L_old[i] * rate / AL_old
+            L_new = self.L_new[i] / AL_new
+            self.splat(self.X_new[i, 0], self.X_new[i, 1], L_new)
+            #self.splat(self.X_old[i, 0], self.X_old[i, 1], L_old)
 
             if ti.random() < accept:
                 self.L_old[i] = self.L_new[i]
