@@ -150,6 +150,8 @@ class TinaRenderPanel(bpy.types.Panel):
         layout.prop(options, 'start_pixel_size')
         layout.prop(options, 'pixel_scale')
         layout.prop(options, 'update_interval')
+        layout.prop(options, 'mlt_lsp')
+        layout.prop(options, 'mlt_sigma')
 
 
 class TinaWorldPanel(bpy.types.Panel):
@@ -576,6 +578,9 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         self.__reset_samples(depsgraph.scene)
 
     def __reset_samples(self, scene):
+        options = scene.tina_render
+        worker.set_mlt_param(options.mlt_lsp, options.mlt_sigma)
+
         self.nsamples = 0
         self.nblocks = scene.tina_render.start_pixel_size
 
@@ -912,6 +917,8 @@ class TinaRenderProperties(bpy.types.PropertyGroup):
     start_pixel_size: bpy.props.IntProperty(name='Start Pixel Size', min=1, default=16, subtype='PIXEL')
     pixel_scale: bpy.props.IntProperty(name='Pixel Scale', min=1, default=1, subtype='PIXEL')
     update_interval: bpy.props.FloatProperty(name='Update Interval', min=0, default=10, subtype='TIME')
+    mlt_lsp: bpy.props.FloatProperty(name='MLT Large Step Probability', min=0, max=1, step=1, default=0.25)
+    mlt_sigma: bpy.props.FloatProperty(name='MLT Mutation Size', min=0, max=1, step=1, default=0.01)
 
 
 def register():

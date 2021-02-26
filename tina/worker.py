@@ -3,13 +3,13 @@ unified API interface for running in a separate worker thread
 '''
 
 from tina.things import *
-#from tina.engine.mltpath import MLTPathEngine as DefaultEngine
-from tina.engine.path import PathEngine as DefaultEngine
+from tina.engine.mltpath import MLTPathEngine as DefaultEngine
+#from tina.engine.path import PathEngine as DefaultEngine
 from tina.engine.preview import PreviewEngine
 
 
 def init():
-    ti.init(ti.cuda)#, device_memory_fraction=0.8)
+    ti.init(ti.cuda, device_memory_fraction=0.8)
     init_things()
     DefaultEngine()
     PreviewEngine()
@@ -35,6 +35,13 @@ def clear(id=0):
     if hasattr(DefaultEngine(), 'reset'):
         DefaultEngine().reset()
     FilmTable().clear(id)
+
+
+def set_mlt_param(lsp, sigma):
+    if hasattr(DefaultEngine(), 'LSP'):
+        DefaultEngine().LSP[None] = lsp
+    if hasattr(DefaultEngine(), 'Sigma'):
+        DefaultEngine().Sigma[None] = sigma
 
 
 def get_image(id=0):

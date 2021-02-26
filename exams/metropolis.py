@@ -10,14 +10,14 @@ init_things()
 MLTPathEngine()
 FilmTable().set_size(512, 512)
 
-vertices, mtlids, materials, images = readgltf('assets/caustics.gltf')
-#vertices, mtlids, materials, images = readgltf('assets/cornell.gltf')
+#vertices, mtlids, materials, images = readgltf('assets/caustics.gltf')
+vertices, mtlids, materials, images = readgltf('assets/cornell.gltf')
 ModelPool().load(vertices, mtlids)
 MaterialPool().load(materials)
 ImagePool().load(images)
 BVHTree().build()
 
-LightPool().pos[0] = [0, 6.7, 0]
+#LightPool().pos[0] = [0, 6.7, 0]
 
 gui = ti.GUI()
 gui.control = CamControl(gui)

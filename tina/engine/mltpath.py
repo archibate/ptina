@@ -66,10 +66,11 @@ class MLTPathEngine(metaclass=Singleton):
             clr = path_trace(ray, rng)
             self.L_new[i] = clr
 
-            AL_new = (self.L_new[i]).y + 1e-10
-            AL_old = (self.L_old[i]).y + 1e-10
+            AL_new = Vavg(self.L_new[i]) + 1e-10
+            AL_old = Vavg(self.L_old[i]) + 1e-10
             accept = min(1, AL_new / AL_old)
-            self.splat(self.X_new[i, 0], self.X_new[i, 1], self.L_new[i])
+            L = self.L_new[i]# * max(1, AL_old / AL_new)
+            self.splat(self.X_new[i, 0], self.X_new[i, 1], L)
 
             if ti.random() < accept:
                 self.L_old[i] = self.L_new[i]
