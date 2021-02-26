@@ -76,8 +76,8 @@ class MaterialPool(metaclass=Singleton):
 
         self.count[None] = len(materials)
 
+    @ti.func
     def get(self, mtlid, texcoord):
-        #'''
         material = Disney(
                 self.basecolor.get(mtlid, texcoord, 0.8).xyz,
                 self.metallic.get(mtlid, texcoord, 0.0).x,

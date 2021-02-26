@@ -72,7 +72,7 @@ def calc_sobol_vgrid(N, D):
 
 @ti.data_oriented
 class SobolSampler(metaclass=Singleton):
-    def __init__(self, dim=21201, nsamples=2**20, skip=64):
+    def __init__(self, dim=21201, nsamples=2**20, skip=64):  # 4 MB
         self.dim = dim
         self.nsamples = nsamples
         self.skip = skip
@@ -90,7 +90,7 @@ class SobolSampler(metaclass=Singleton):
         ti.materialize_callback(self.reset)
 
     def reset(self):
-        print('[TinaSobol] resetting sobol generator...')
+        print('[TinaSobol] reset sobol generator...')
         self.time[None] = 0
         self.X.fill(0)
         for i in range(self.skip):

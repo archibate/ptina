@@ -5,7 +5,7 @@ camera control using Taichi GUI events (resulting in a 4x4 perspective matrix)
 from tina.common import *
 
 
-print('[Tina] Hint: MMB to orbit, Shift+MMB to pan, wheel to zoom')
+print('[TinaGUI] Hint: MMB to orbit, Shift+MMB to pan, wheel to zoom')
 
 
 class CamControl:

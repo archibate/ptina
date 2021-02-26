@@ -245,13 +245,13 @@ class LinearBVH:
     def genAABBs(self):
         count = 1
         self.clearAABBStates()
-        print('[Tina] running AABB first step...')
+        print('[TinaBVH] running AABB first step...')
         while not self.genAABBSubstep():
-            print('[Tina] running AABB substep...')
+            print('[TinaBVH] running AABB substep...')
             count += 1
             if count > 64:
                 raise RuntimeError('AABB step never stop! hierarchy corrupted?')
-        print('[Tina] LBVH tree depth', count, '>=',
+        print('[TinaBVH] LBVH tree depth', count, '>=',
                 int(np.ceil(np.log2(self.n[None]))))
 
 
@@ -289,14 +289,14 @@ class LinearBVH:
 
 
     def build(self):
-        print('[Tina] building LBVH tree...')
+        print('[TinaBVH] building LBVH tree...')
         self.genMortonCodes()
-        print('[Tina] sorting morton codes...')
+        print('[TinaBVH] sorting morton codes...')
         self.sortMortonCodes()
-        print('[Tina] generating hierarchy...')
+        print('[TinaBVH] generating hierarchy...')
         self.genHierarchy()
         self.genAABBs()
-        print('[Tina] building LBVH tree done')
+        print('[TinaBVH] building LBVH tree done')
 
 
     @ti.func
