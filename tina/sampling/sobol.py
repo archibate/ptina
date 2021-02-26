@@ -108,6 +108,7 @@ class SobolSampler(metaclass=Singleton):
     def calc(self, i):
         return self.P[i % self.dim]
 
+    @ti.func
     def get_proxy(self, i):
         return self.Proxy(self, i)
 
