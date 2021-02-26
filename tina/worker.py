@@ -3,8 +3,8 @@ unified API interface for running in a separate worker thread
 '''
 
 from tina.things import *
-from tina.engine.mltpath import MLTPathEngine as DefaultEngine
-#from tina.engine.path import PathEngine as DefaultEngine
+#from tina.engine.mltpath import MLTPathEngine as DefaultEngine
+from tina.engine.path import PathEngine as DefaultEngine
 from tina.engine.preview import PreviewEngine
 
 

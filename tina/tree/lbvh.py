@@ -363,8 +363,7 @@ if __name__ == '__main__':
     bvh = LinearBVH(2**16)
 
     from tina.tools.readgltf import readgltf
-    ModelPool().load(readgltf('/tmp/test.gltf')[0])
-    #ModelPool().load('assets/cube.obj')
+    ModelPool().load('assets/cube.obj')
     bvh.genMortonCodes()
     bvh.sortMortonCodes()
     bvh.genHierarchy()
