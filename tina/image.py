@@ -136,8 +136,10 @@ class Image:
 
     @ti.func
     def subscript(self, x, y):
-        x = clamp(x, 0, self.nx)
-        y = clamp(y, 0, self.ny)
+        #x = clamp(x, 0, self.nx - 1)
+        #y = clamp(y, 0, self.ny - 1)
+        x = x % self.nx
+        y = y % self.ny
         return ImagePool()[self.id, x, y]
 
     @ti.func

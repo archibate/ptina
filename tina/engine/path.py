@@ -46,13 +46,14 @@ def path_trace(r, rng):
             normal = -normal
 
         li = LightPool().sample(hitpos, random3(rng))
-        occ = BVHTree().intersect(Ray(hitpos, li.dir), avoid)
-        if occ.hit == 0 or occ.depth > li.dis:
-            brdf_clr = material.brdf(normal, sign, -r.d, li.dir)
-            brdf_pdf = Vavg(brdf_clr)
-            mis = power_heuristic(li.pdf, brdf_pdf)
-            direct_li = mis * li.color * brdf_clr * dot_or_zero(normal, li.dir)
-            result += throughput * direct_li
+        if Vany(li.color > 0):
+            occ = BVHTree().intersect(Ray(hitpos, li.dir), avoid)
+            if occ.hit == 0 or occ.depth > li.dis:
+                brdf_clr = material.brdf(normal, sign, -r.d, li.dir)
+                brdf_pdf = Vavg(brdf_clr)
+                mis = power_heuristic(li.pdf, brdf_pdf)
+                direct_li = mis * li.color * brdf_clr * dot_or_zero(normal, li.dir)
+                result += throughput * direct_li
 
         brdf = material.bounce(normal, sign, -r.d, random3(rng))
         throughput *= brdf.color
