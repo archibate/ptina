@@ -117,7 +117,7 @@ class MemoryView:
     def linearize_indices(self, indices):
         index = self.base
         stride = 1
-        for i in ti.static(range(len(indices) - 1, 0, -1)):
+        for i in ti.static(range(len(indices) - 1, -1, -1)):
             index += stride * (indices[i] % self.shape[i])
             stride *= self.shape[i]
         return index
@@ -138,7 +138,7 @@ id = mem.new((10, 10))
 def func():
     view = mem.get_view(id)
     for i, j in ti.ndrange(*view.shape.xy):
-        view[i, j] = i * 10 + j
+        view[i, j] += i * 10 + j
     for i, j in ti.ndrange(*view.shape.xy):
         print(i, j, view[i, j])
 
