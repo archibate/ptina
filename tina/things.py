@@ -9,13 +9,20 @@ from tina.mtllib import *
 from tina.filmtable import *
 
 
-def init_things():
+def init_things(
+    max_faces=2**21,
+    max_texels=2**22,
+    max_materials=2**6,
+    max_textures=2**6,
+    max_lights=2**6,
+    max_filmsize=2**21,
+    max_filmpasses=3):
     Stack()
     Camera()
-    BVHTree()
-    ImagePool()
-    ModelPool()
-    LightPool()
+    BVHTree(max_faces)
+    ImagePool(max_texels, max_textures)
+    ModelPool(max_faces)
+    LightPool(max_lights)
     WorldLight()
-    MaterialPool()
-    FilmTable()
+    MaterialPool(max_materials)
+    FilmTable(max_filmsize, max_filmpasses)

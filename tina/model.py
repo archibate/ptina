@@ -10,7 +10,7 @@ from tina.mtllib import *
 class ModelPool(metaclass=Singleton):
     is_taichi_class = True
 
-    def __init__(self, size=2**22):  # 100 MB
+    def __init__(self, size=2**21):  # 50 MB
         self.nfaces = ti.field(int, ())
         self.vertices = ti.field(float, size * 8 * 3)
         self.mtlids = ti.field(int, size)

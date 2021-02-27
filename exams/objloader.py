@@ -5,10 +5,10 @@ from tina.tools.readgltf import readgltf
 from tina.tools.readobj import readobj
 
 
-ti.init(ti.cuda)
+ti.init(ti.opengl)
 init_things()
 PathEngine()
-FilmTable().set_size(256, 256)
+FilmTable().set_size(1024, 1024)
 
 vertices = readobj('assets/monkey.obj')
 ModelPool().load(vertices)
@@ -21,5 +21,5 @@ while gui.running:
         FilmTable().clear()
     Camera().set_perspective(gui.control.get_perspective())
     PathEngine().render()
-    gui.set_image(ti.imresize(FilmTable().get_image(), 512))
+    gui.set_image(FilmTable().get_image())
     gui.show()

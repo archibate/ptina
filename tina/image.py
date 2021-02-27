@@ -10,7 +10,7 @@ from tina.allocator import *
 class ImagePool(metaclass=Singleton):
     is_taichi_class = True
 
-    def __init__(self, size=2**23, count=2**8):  # 128 MB
+    def __init__(self, size=2**22, count=2**6):  # 64 MB
         self.mman = MemoryAllocator(size)
         self.idman = IdAllocator(count)
         self.nx = ti.field(int, count)

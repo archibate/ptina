@@ -409,7 +409,7 @@ class Singleton(type):
 
 def please_install(name):
     if ti.get_os_name() == 'win':
-        pip = 'python3 -m pip'
-    else:
         pip = 'python -m pip'
+    else:
+        pip = 'python3 -m pip'
     raise ImportError(f'Please run `{pip} install -U {name}`') from None
