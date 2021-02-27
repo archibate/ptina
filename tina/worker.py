@@ -15,6 +15,10 @@ def init():
     PreviewEngine()
 
 
+def synchronize():
+    ti.sync()
+
+
 def render(aa=True):
     DefaultEngine().render()
 

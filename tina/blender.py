@@ -150,6 +150,7 @@ class TinaRenderPanel(bpy.types.Panel):
         layout.prop(options, 'start_pixel_size')
         layout.prop(options, 'pixel_scale')
         layout.prop(options, 'update_interval')
+        layout.prop(options, 'sync_interval')
         #layout.prop(options, 'mlt_lsp')
         #layout.prop(options, 'mlt_sigma')
 
@@ -618,6 +619,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
         t0 = time.time()
         interval = scene.tina_render.update_interval
+        sync_interval = scene.tina_render.sync_interval
 
         nsamples = scene.tina_render.render_samples
         for samp in range(nsamples):
@@ -629,6 +631,10 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             worker.render()
             if samp < scene.tina_render.albedo_samples:
                 worker.render_preview()
+
+            if samp % sync_interval == sync_interval - 1:
+                print('[TinaBlend] synchronizing device...')
+                worker.synchronize()
 
             do_update = time.time() - t0 > interval
 
@@ -917,6 +923,7 @@ class TinaRenderProperties(bpy.types.PropertyGroup):
     start_pixel_size: bpy.props.IntProperty(name='Start Pixel Size', min=1, default=16, subtype='PIXEL')
     pixel_scale: bpy.props.IntProperty(name='Pixel Scale', min=1, default=1, subtype='PIXEL')
     update_interval: bpy.props.FloatProperty(name='Update Interval', min=0, default=10, subtype='TIME')
+    sync_interval: bpy.props.IntProperty(name='Synchronize Interval', min=1, default=4)
     #mlt_lsp: bpy.props.FloatProperty(name='MLT Large Step Probability', min=0, max=1, step=1, default=0.25)
     #mlt_sigma: bpy.props.FloatProperty(name='MLT Mutation Size', min=0, max=1, step=1, default=0.01)
 
