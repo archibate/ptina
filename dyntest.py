@@ -58,9 +58,9 @@ class IdAllocator:
 
 @ti.data_oriented
 class MemoryRoot:
-    def __init__(self, size, count):
+    def __init__(self, dtype, size, count):
         self.size = size
-        self.root = ti.field(int, size)
+        self.root = ti.field(dtype, size)
         self.mman = MemoryAllocator(size)
         self.idman = IdAllocator(count)
         self.sizes = ti.field(int, count)
@@ -191,18 +191,44 @@ class MemoryVectorField(MemoryField):
         return ti.Vector([self.view.subscript(*indices + (i,)) for i in range(self.n)])
 
 
-mem = MemoryRoot(1024, 32)
+@ti.data_oriented
+class BitCastField:
+    is_taichi_class = True
+
+    @ti.python_scope
+    def __init__(self, field, src_type, dst_type):
+        self.field = field
+        self.src_type = src_type
+        self.dst_type = dst_type
+
+    @ti.taichi_scope
+    def subscript_assign(self, value, *indices):
+        self.field.subscript(*indices).assign(ti.bit_cast(ti.cast(value, self.dst_type), self.src_type))
+
+    @ti.taichi_scope
+    def subscript(self, *indices):
+        ret = ti.bit_cast(self.field.subscript(*indices), self.dst_type)
+        def new_assign(value):
+            self.subscript_assign(value, *indices)
+        ret.assign = new_assign
+        return ret
+
+    def __getattr__(self, name):
+        return getattr(self.field, name)
+
+
+mem = MemoryRoot(int, 1024, 32)
 
 
 @ti.data_oriented
 class MyClass:
     def __init__(self):
-        self.dat = mem.vector_field(2, (2, 2))
+        self.dat = BitCastField(mem.field((2, 2)), int, float)
 
     @ti.kernel
     def func(self):
         for i, j in ti.ndrange(*self.dat.shape):
-            self.dat[i, j] += V(i, j)
+            self.dat[i, j] = i + j * 0.1
         for i, j in ti.ndrange(*self.dat.shape):
             print(i, j, self.dat[i, j])
 
