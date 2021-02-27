@@ -103,13 +103,26 @@ class MemoryRoot:
         view = MemoryView(self, base, shape)
         return view
 
+    @ti.python_scope
+    def field(self, shape):
+        shape = totuple(shape)
+        id = self.new(shape)
+        return MemoryField(self, id, shape)
+
+    @ti.python_scope
+    def vector_field(self, n, shape):
+        shape = totuple(shape) + (n,)
+        id = self.new(shape)
+        return MemoryVectorField(self, id, shape)
+
 
 @ti.data_oriented
 class MemoryView:
     is_taichi_class = True
 
+    @ti.taichi_scope
     def __init__(self, parent, base, shape):
-        self.parent = ti.expr_init(parent)
+        self.parent = parent
         self.shape = ti.expr_init(shape)
         self.base = ti.expr_init(base)
 
@@ -122,24 +135,77 @@ class MemoryView:
             stride *= self.shape[i]
         return index
 
+    @ti.taichi_scope
     def subscript(self, *indices):
         indices = tovector(indices)
         index = self.linearize_indices(indices)
         return self.parent.subscript(index)
 
+    @ti.taichi_scope
     def variable(self):
         return self
 
 
+@ti.data_oriented
+class MemoryField:
+    is_taichi_class = True
+
+    @ti.python_scope
+    def __init__(self, parent, id, shape):
+        self.parent = parent
+        self.id = id
+        self.shape = shape
+        self.dim = len(shape)
+
+    @ti.python_scope
+    def delete(self):
+        self.parent.delete(self.id)
+
+    @property
+    @ti.taichi_scope
+    def view(self):
+        return self.parent.get_view(self.id)
+
+    @ti.taichi_scope
+    def subscript(self, *indices):
+        assert len(indices) == self.dim, f'{self.dim} indices expected, got {len(indices)}'
+        return self.view.subscript(*indices)
+
+    @ti.taichi_scope
+    def variable(self):
+        return self
+
+
+@ti.data_oriented
+class MemoryVectorField(MemoryField):
+    @ti.python_scope
+    def __init__(self, parent, id, shape):
+        super().__init__(parent, id, shape)
+        self.n = self.shape[-1]
+        self.shape = self.shape[:-1]
+        self.dim -= 1
+
+    @ti.taichi_scope
+    def subscript(self, *indices):
+        assert len(indices) == self.dim, f'{self.dim} indices expected, got {len(indices)}'
+        return ti.Vector([self.view.subscript(*indices + (i,)) for i in range(self.n)])
+
+
 mem = MemoryRoot(1024, 32)
-id = mem.new((10, 10))
 
-@ti.kernel
-def func():
-    view = mem.get_view(id)
-    for i, j in ti.ndrange(*view.shape.xy):
-        view[i, j] += i * 10 + j
-    for i, j in ti.ndrange(*view.shape.xy):
-        print(i, j, view[i, j])
 
-func()
+@ti.data_oriented
+class MyClass:
+    def __init__(self):
+        self.dat = mem.vector_field(2, (2, 2))
+
+    @ti.kernel
+    def func(self):
+        for i, j in ti.ndrange(*self.dat.shape):
+            self.dat[i, j] += V(i, j)
+        for i, j in ti.ndrange(*self.dat.shape):
+            print(i, j, self.dat[i, j])
+
+
+a = MyClass()
+a.func()
