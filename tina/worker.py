@@ -16,7 +16,7 @@ def init():
 
 
 def synchronize():
-    ti.sync()
+    print('nfaces =', ModelPool().nfaces[None])
 
 
 def render(aa=True):
