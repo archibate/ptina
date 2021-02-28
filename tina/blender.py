@@ -24,6 +24,9 @@ if 1:
             print('[TinaBlend] importing worker done')
             return worker
 
+        import taiworker
+        worker.direct_launch(taiworker.get_initializer())
+
         print('[TinaBlend] initializing worker')
         worker.init()
         print('[TinaBlend] initializing worker done')
