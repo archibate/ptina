@@ -1,10 +1,10 @@
 bl_info = {
-        'name': 'Tina',
+        'name': 'Taichi Tina',
         'description': 'A soft renderer based on Taichi programming language',
         'author': 'archibate <1931127624@qq.com>',
-        'version': (0, 1, 0),
+        'version': (0, 1, 1),
         'blender': (2, 90, 0),
-        'location': 'Render -> Tina',
+        'location': 'Render -> Tina Render',
         'support': 'COMMUNITY',
         'wiki_url': 'https://github.com/taichi-dev/taichi_three/wiki',
         'tracker_url': 'https://github.com/taichi-dev/taichi_three/issues',
