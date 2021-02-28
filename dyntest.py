@@ -116,6 +116,70 @@ class MemoryRoot:
         return MemoryVectorField(self, id, shape)
 
 
+def apply_aug_operation(op, lhs, rhs):
+    if op == 'Add':
+        return lhs + rhs
+    elif op == 'Sub':
+        return lhs - rhs
+    elif op == 'Mult':
+        return lhs * rhs
+    elif op == 'Div':
+        return lhs / rhs
+    elif op == 'FloorDiv':
+        return lhs // rhs
+    elif op == 'Mod':
+        return lhs % rhs
+    elif op == 'BitAnd':
+        return lhs & rhs
+    elif op == 'BitOr':
+        return lhs | rhs
+    elif op == 'BitXor':
+        return lhs ^ rhs
+    elif op == 'RShift':
+        return lhs >> rhs
+    elif op == 'LShift':
+        return lhs << rhs
+    else:
+        assert False, op
+
+
+@ti.data_oriented
+class BitCastField:
+    is_taichi_class = True
+
+    @ti.python_scope
+    def __init__(self, field, src_type, dst_type):
+        self.field = field
+        self.src_type = src_type
+        self.dst_type = dst_type
+
+    @ti.taichi_scope
+    def subscript_assign(self, value, *indices):
+        self.field.subscript(*indices).assign(ti.bit_cast(ti.cast(value, self.dst_type), self.src_type))
+
+    @ti.taichi_scope
+    def subscript_augassign(self, value, op, *indices):
+        self.subscript_assign(apply_aug_operation(op, self.subscript(*indices), value), *indices)
+
+    @ti.taichi_scope
+    def subscript(self, *indices):
+        ret = ti.bit_cast(self.field.subscript(*indices), self.dst_type)
+        def wrapped_assign(value):
+            self.subscript_assign(value, *indices)
+        def wrapped_augassign(value, op):
+            self.subscript_augassign(value, op, *indices)
+        ret.assign = wrapped_assign
+        ret.augassign = wrapped_augassign
+        return ret
+
+    def __getattr__(self, name):
+        return getattr(self.field, name)
+
+    @ti.taichi_scope
+    def variable(self):
+        return self
+
+
 @ti.data_oriented
 class MemoryView:
     is_taichi_class = True
@@ -191,82 +255,21 @@ class MemoryVectorField(MemoryField):
         return ti.Vector([self.view.subscript(*indices + (i,)) for i in range(self.n)])
 
 
-def apply_aug_operation(op, lhs, rhs):
-    if op == 'Add':
-        return lhs + rhs
-    elif op == 'Sub':
-        return lhs - rhs
-    elif op == 'Mult':
-        return lhs * rhs
-    elif op == 'Div':
-        return lhs / rhs
-    elif op == 'FloorDiv':
-        return lhs // rhs
-    elif op == 'Mod':
-        return lhs % rhs
-    elif op == 'BitAnd':
-        return lhs & rhs
-    elif op == 'BitOr':
-        return lhs | rhs
-    elif op == 'BitXor':
-        return lhs ^ rhs
-    elif op == 'RShift':
-        return lhs >> rhs
-    elif op == 'LShift':
-        return lhs << rhs
-    else:
-        assert False, op
-
-
-@ti.data_oriented
-class BitCastField:
-    is_taichi_class = True
-
-    @ti.python_scope
-    def __init__(self, field, src_type, dst_type):
-        self.field = field
-        self.src_type = src_type
-        self.dst_type = dst_type
-
-    @ti.taichi_scope
-    def subscript_assign(self, value, *indices):
-        self.field.subscript(*indices).assign(ti.bit_cast(ti.cast(value, self.dst_type), self.src_type))
-
-    @ti.taichi_scope
-    def subscript_augassign(self, value, op, *indices):
-        self.subscript_assign(apply_aug_operation(op, self.subscript(*indices), value), *indices)
-
-    @ti.taichi_scope
-    def subscript(self, *indices):
-        ret = ti.bit_cast(self.field.subscript(*indices), self.dst_type)
-        def wrapped_assign(value):
-            self.subscript_assign(value, *indices)
-        def wrapped_augassign(value, op):
-            self.subscript_augassign(value, op, *indices)
-        ret.assign = wrapped_assign
-        ret.augassign = wrapped_augassign
-        return ret
-
-    def __getattr__(self, name):
-        return getattr(self.field, name)
-
-
 mem = MemoryRoot(int, 1024, 32)
 
 
 @ti.data_oriented
 class MyClass:
     def __init__(self):
-        self.dat = BitCastField(mem.vector_field(2, (2, 2)), int, float)
+        self.dat = mem.new((2, 2))
 
     @ti.kernel
     def func(self):
-        for i, j in ti.ndrange(*self.dat.shape):
-            self.dat[i, j] += V(i, j * 0.1)
-        for i, j in ti.ndrange(*self.dat.shape):
-            self.dat[i, j] += V(i, j * 0.2)
-        for i, j in ti.ndrange(*self.dat.shape):
-            print(i, j, self.dat[i, j])
+        dat = mem.get_view(self.dat)
+        for i, j in ti.ndrange(*dat.shape.xy):
+            dat[i, j] = i * 10 + j
+        for i, j in ti.ndrange(*dat.shape.xy):
+            print(i, j, dat[i, j])
 
 
 a = MyClass()
