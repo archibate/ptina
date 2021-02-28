@@ -19,8 +19,11 @@ hasattr(ti, '_tinahacked') or setattr(ti, '_tinahacked', 1) or setattr(ti,
         x][1])(ti.materialize_callback)) or setattr(ti, 'expr_init', (lambda f:
         lambda x: x if isinstance(x, (dict, str)) or x is ti else f(x))(
         ti.expr_init)) or setattr(ti, 'expr_init_func', (lambda f: lambda x: x
-        if isinstance (x, (dict, str)) or x is ti else f(x))(ti.expr_init_func)
-        ) or print('[Tina] Taichi properties hacked')
+        if isinstance(x, (dict, str)) or x is ti else f(x))(ti.expr_init_func)
+        ) or setattr(ti, 'bit_cast', (lambda f: lambda x, y: (lambda z:
+        ([z.entries.__setitem__(i, f(x.entries[i], y)) for i in range(x.n * x.m)
+        ], z)[1])(ti.Matrix.empty(x.n, x.m)) if isinstance(x, ti.Matrix) else
+        f(x, y))(ti.bit_cast)) or print('[Tina] Taichi properties hacked')
 
 
 eps = 1e-6

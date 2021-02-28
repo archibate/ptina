@@ -191,6 +191,33 @@ class MemoryVectorField(MemoryField):
         return ti.Vector([self.view.subscript(*indices + (i,)) for i in range(self.n)])
 
 
+def apply_aug_operation(op, lhs, rhs):
+    if op == 'Add':
+        return lhs + rhs
+    elif op == 'Sub':
+        return lhs - rhs
+    elif op == 'Mult':
+        return lhs * rhs
+    elif op == 'Div':
+        return lhs / rhs
+    elif op == 'FloorDiv':
+        return lhs // rhs
+    elif op == 'Mod':
+        return lhs % rhs
+    elif op == 'BitAnd':
+        return lhs & rhs
+    elif op == 'BitOr':
+        return lhs | rhs
+    elif op == 'BitXor':
+        return lhs ^ rhs
+    elif op == 'RShift':
+        return lhs >> rhs
+    elif op == 'LShift':
+        return lhs << rhs
+    else:
+        assert False, op
+
+
 @ti.data_oriented
 class BitCastField:
     is_taichi_class = True
@@ -206,11 +233,18 @@ class BitCastField:
         self.field.subscript(*indices).assign(ti.bit_cast(ti.cast(value, self.dst_type), self.src_type))
 
     @ti.taichi_scope
+    def subscript_augassign(self, value, op, *indices):
+        self.subscript_assign(apply_aug_operation(op, self.subscript(*indices), value), *indices)
+
+    @ti.taichi_scope
     def subscript(self, *indices):
         ret = ti.bit_cast(self.field.subscript(*indices), self.dst_type)
-        def new_assign(value):
+        def wrapped_assign(value):
             self.subscript_assign(value, *indices)
-        ret.assign = new_assign
+        def wrapped_augassign(value, op):
+            self.subscript_augassign(value, op, *indices)
+        ret.assign = wrapped_assign
+        ret.augassign = wrapped_augassign
         return ret
 
     def __getattr__(self, name):
@@ -223,12 +257,14 @@ mem = MemoryRoot(int, 1024, 32)
 @ti.data_oriented
 class MyClass:
     def __init__(self):
-        self.dat = BitCastField(mem.field((2, 2)), int, float)
+        self.dat = BitCastField(mem.vector_field(2, (2, 2)), int, float)
 
     @ti.kernel
     def func(self):
         for i, j in ti.ndrange(*self.dat.shape):
-            self.dat[i, j] = i + j * 0.1
+            self.dat[i, j] += V(i, j * 0.1)
+        for i, j in ti.ndrange(*self.dat.shape):
+            self.dat[i, j] += V(i, j * 0.2)
         for i, j in ti.ndrange(*self.dat.shape):
             print(i, j, self.dat[i, j])
 
