@@ -50,6 +50,9 @@ class DaemonModule:
         def _():
             self._module = getmodule()
 
+    def direct_launch(self, func):
+        return self._worker.launch(func)
+
     def _wrap(self, func):
         if not callable(func):
             return func

@@ -9,7 +9,6 @@ from tina.engine.preview import PreviewEngine
 
 
 def init():
-    ti.init(ti.cuda, device_memory_fraction=0.8)
     init_things()
     DefaultEngine()
     PreviewEngine()
