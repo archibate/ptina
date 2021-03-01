@@ -1,9 +1,9 @@
-from tina.things import *
-from tina.engine.brute import *
-from tina.tools.control import CamControl
-from tina.tools.readgltf import readgltf
-from tina.tools.readobj import readobj
-from tina.tools.globals import *
+from ptina.things import *
+from ptina.engine.brute import *
+from ptina.tools.control import CamControl
+from ptina.tools.readgltf import readgltf
+from ptina.tools.readobj import readobj
+from ptina.tools.globals import *
 
 
 ti.init(ti.opengl)

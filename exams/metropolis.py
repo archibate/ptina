@@ -1,7 +1,7 @@
-from tina.things import *
-from tina.engine.mltpath import *
-from tina.tools.control import CamControl
-from tina.tools.readgltf import readgltf
+from ptina.things import *
+from ptina.engine.mltpath import *
+from ptina.tools.control import CamControl
+from ptina.tools.readgltf import readgltf
 
 
 ti.init(ti.opengl)

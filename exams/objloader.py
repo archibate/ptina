@@ -1,8 +1,8 @@
-from tina.things import *
-from tina.engine.path import *
-from tina.tools.control import CamControl
-from tina.tools.readgltf import readgltf
-from tina.tools.readobj import readobj
+from ptina.things import *
+from ptina.engine.path import *
+from ptina.tools.control import CamControl
+from ptina.tools.readgltf import readgltf
+from ptina.tools.readobj import readobj
 
 
 ti.init(ti.opengl)

@@ -1,4 +1,4 @@
-# Tina
+# PTina
 
 A path tracer based on [Taichi](https://github.com/taichi-dev/taichi)
 

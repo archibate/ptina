@@ -6,8 +6,8 @@ bl_info = {
         'blender': (2, 81, 0),
         'location': 'Render -> Tina',
         'support': 'TESTING',
-        'wiki_url': 'https://github.com/archibate/tina/wiki',
-        'tracker_url': 'https://github.com/archibate/tina/issues',
+        'wiki_url': 'https://github.com/archibate/ptina/wiki',
+        'tracker_url': 'https://github.com/archibate/ptina/issues',
         'warning': 'Development mode',
         'category': 'Render',
 }
@@ -22,8 +22,8 @@ registered = False
 
 def register():
     print('Tina-Dev register...')
-    import tina
-    tina.register()
+    import ptina
+    ptina.register()
 
     global registered
     registered = True
@@ -32,8 +32,8 @@ def register():
 
 def unregister():
     print('Tina-Dev unregister...')
-    import tina
-    tina.unregister()
+    import ptina
+    ptina.unregister()
 
     global registered
     registered = False
@@ -42,17 +42,17 @@ def unregister():
 
 def reload_addon():
     if registered:
-        import tina
-        tina.unregister()
-        del tina
+        import ptina
+        ptina.unregister()
+        del ptina
     mods_to_del = []
     for k in sys.modules:
-        if k.startswith('tina.') or k == 'tina':
+        if k.startswith('ptina.') or k == 'ptina':
             mods_to_del.append(k)
     for k in mods_to_del:
         sys.modules.pop(k)
-    import tina
-    tina.register()
+    import ptina
+    ptina.register()
 
 
 @eval('lambda x: x()')

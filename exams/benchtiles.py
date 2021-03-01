@@ -1,6 +1,6 @@
-from tina.things import *
-from tina.engine.path import *
-from tina.tools.readgltf import readgltf
+from ptina.things import *
+from ptina.engine.path import *
+from ptina.tools.readgltf import readgltf
 import time
 
 
