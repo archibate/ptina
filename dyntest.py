@@ -269,23 +269,32 @@ class ObjectPool:
         id = self.data[objid, attrid]
         return mem.get_view(id)
 
-    def new_proxy(self):
+    def new_proxy(self, clsid):
         objid = self.idman.malloc()
-        return self.ObjectProxy(self, objid)
+        return self.ObjectProxy(self, clsid, objid)
 
     @ti.data_oriented
     class ObjectProxy:
-        def __init__(self, parent, objid):
+        def __init__(self, parent, clsid, objid):
             self.parent = parent
             self.objid = objid
+            self.clsid = clsid
             self.nattrs = 0
+            self.shapes = []
 
         def new(self, shape):
             fid = mem.new(shape)
             attrid = self.nattrs
             self.parent.data[self.objid, attrid] = fid
             self.nattrs += 1
+            self.shapes.append(shape)
             return self.FieldProxy(self, attrid)
+
+        def on_hash(self):
+            return self.clsid
+
+        def on_eq(self, other):
+            return self.clsid == other._proxy.clsid
 
         @ti.data_oriented
         class FieldProxy:
@@ -297,9 +306,13 @@ class ObjectPool:
 
             @property
             @ti.func
+            def field_id(self):
+                return self.parent.parent.data[self.parent.objid, self.attrid]
+
+            @property
+            @ti.func
             def view(self):
-                fid = self.parent.parent.data[self.parent.objid, self.attrid]
-                return mem.get_view(fid)
+                return mem.get_view(self.field_id)
 
             @property
             @ti.taichi_scope
@@ -320,17 +333,28 @@ pool = ObjectPool()
 
 @ti.data_oriented
 class MyClass:
-    def __init__(self):
-        proxy = pool.new_proxy()
-        self.dat = proxy.new((2, 2))
+    def __init__(self, m, n):
+        self._proxy = pool.new_proxy(1)
+        self.dat = self._proxy.new((m, n))
+
+    def __hash__(self):
+        return self._proxy.on_hash()
+
+    def __eq__(self, other):
+        return self._proxy.on_eq(other)
 
     @ti.kernel
     def func(self):
+        ti.static_print('jit func')
+        print(self.dat.field_id)
         for i, j in ti.ndrange(*self.dat.shape.xy):
             self.dat[i, j] = i * 10 + j
         for i, j in ti.ndrange(*self.dat.shape.xy):
             print(i, j, self.dat[i, j])
 
 
-a = MyClass()
+a = MyClass(3, 4)
 a.func()
+print('===')
+b = MyClass(3, 4)
+b.func()
