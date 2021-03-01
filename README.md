@@ -39,16 +39,16 @@ The unit of numbers below is samples-per-second, the larger the better:
 
 - 34 Tri, cornell with two boxes:
 
-    5.17   OpenGL (local stack)
-    6.54   OpenGL
-    7.25   CUDA
+  * 5.17   OpenGL (local stack)
+  * 6.54   OpenGL
+  * 7.25   CUDA
 
 - 978 Tri, cornell with a monkey:
 
-    2.48   OpenGL (local stack)
-    3.14   OpenGL
-    2.88   CUDA
-    2.22   CUDA (middle bvh)
+  * 2.48   OpenGL (local stack)
+  * 3.14   OpenGL
+  * 2.88   CUDA
+  * 2.22   CUDA (middle bvh)
 
 ## References
 

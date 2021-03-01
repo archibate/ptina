@@ -255,21 +255,81 @@ class MemoryVectorField(MemoryField):
         return ti.Vector([self.view.subscript(*indices + (i,)) for i in range(self.n)])
 
 
-mem = MemoryRoot(int, 1024, 32)
+mem = MemoryRoot(int, 2**16, 32)
+
+
+@ti.data_oriented
+class ObjectPool:
+    def __init__(self, nobjects=2**8, nattribs=2**6):
+        self.data = ti.field(int, (nobjects, nattribs))
+        self.idman = IdAllocator(nobjects)
+
+    @ti.func
+    def get_view(self, objid, attrid):
+        id = self.data[objid, attrid]
+        return mem.get_view(id)
+
+    def new_proxy(self):
+        objid = self.idman.malloc()
+        return self.ObjectProxy(self, objid)
+
+    @ti.data_oriented
+    class ObjectProxy:
+        def __init__(self, parent, objid):
+            self.parent = parent
+            self.objid = objid
+            self.nattrs = 0
+
+        def new(self, shape):
+            fid = mem.new(shape)
+            attrid = self.nattrs
+            self.parent.data[self.objid, attrid] = fid
+            self.nattrs += 1
+            return self.FieldProxy(self, attrid)
+
+        @ti.data_oriented
+        class FieldProxy:
+            is_taichi_class = True
+
+            def __init__(self, parent, attrid):
+                self.parent = parent
+                self.attrid = attrid
+
+            @property
+            @ti.func
+            def view(self):
+                fid = self.parent.parent.data[self.parent.objid, self.attrid]
+                return mem.get_view(fid)
+
+            @property
+            @ti.taichi_scope
+            def shape(self):
+                return self.view.shape
+
+            @ti.taichi_scope
+            def subscript(self, *indices):
+                return self.view.subscript(*indices)
+
+            @ti.taichi_scope
+            def variable(self):
+                return self
+
+
+pool = ObjectPool()
 
 
 @ti.data_oriented
 class MyClass:
     def __init__(self):
-        self.dat = mem.new((2, 2))
+        proxy = pool.new_proxy()
+        self.dat = proxy.new((2, 2))
 
     @ti.kernel
     def func(self):
-        dat = mem.get_view(self.dat)
-        for i, j in ti.ndrange(*dat.shape.xy):
-            dat[i, j] = i * 10 + j
-        for i, j in ti.ndrange(*dat.shape.xy):
-            print(i, j, dat[i, j])
+        for i, j in ti.ndrange(*self.dat.shape.xy):
+            self.dat[i, j] = i * 10 + j
+        for i, j in ti.ndrange(*self.dat.shape.xy):
+            print(i, j, self.dat[i, j])
 
 
 a = MyClass()
