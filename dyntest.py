@@ -308,13 +308,18 @@ class MObject:
         self.ids[i] = id
 
     @ti.python_scope
-    def _do_prepare(self):
+    def _do_prepare(self, argid):
         idsi = self.ids.id
-        self.parent.idsi[0] = idsi
+        self.parent.idsi[argid] = idsi
+        self._argid = argid
+
+    @ti.python_scope
+    def _do_unprepare(self):
+        del self._argid
 
     @ti.func
     def get_field(self, i):
-        idsi = self.parent.idsi[0]
+        idsi = self.parent.idsi[self._argid]
         ids = self.parent.get_view(idsi)
         return self.parent.get_view(ids[i])
 
@@ -326,21 +331,17 @@ class MObject:
 
 
 def momethod(foo):
-    primal = foo._primal
+    def wrap(func):
+        def wrapped(self, *args, **kwargs):
+            self._do_prepare(0)
+            ret = func(self, *args, **kwargs)
+            self._do_unprepare()
+            return ret
 
-    def new_primal(self, *args, **kwargs):
-        self._do_prepare()
-        return primal(self, *args, **kwargs)
+        return wrapped
 
-    foo._primal = new_primal
-
-    adjoint = foo._adjoint
-
-    def new_adjoint(self, *args, **kwargs):
-        self._do_prepare()
-        return adjoint(self, *args, **kwargs)
-
-    foo._adjoint = new_adjoint
+    foo._primal = wrap(foo._primal)
+    foo._adjoint = wrap(foo._adjoint)
 
     return foo
 
@@ -353,18 +354,35 @@ class Image(MObject):
         self.set_field(0, self.parent.new((m, n)))
 
     @property
-    def dat(self):
+    def img(self):
         return self.get_field(0)
 
     @momethod
     @ti.kernel
     def func(self):
         ti.static_print('jit func')
+        print(self.img.shape.xy)
+
+
+@ti.data_oriented
+class Data(MObject):
+    def __init__(self, m, n):
+        super().__init__(g_mem)
+
+        self.set_field(0, self.parent.new((m, n)))
+
+    @property
+    def dat(self):
+        return self.get_field(0)
+
+    @momethod
+    @ti.kernel
+    def func(self, other: ti.template()):
+        ti.static_print('jit func')
         print(self.dat.shape.xy)
+        print(other.img.shape.xy)
 
 
-a = Image(3, 4)
-a.func()
-print('===')
-b = Image(2, 2)
-b.func()
+i = Image(3, 4)
+d = Data(2, 3)
+d.func(i)
