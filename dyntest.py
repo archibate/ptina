@@ -215,6 +215,22 @@ class MemoryView:
 
 
 @ti.data_oriented
+class MemoryVectorView:
+    @ti.taichi_scope
+    def __init__(self, parent, base, shape, n):
+        super().__init__(parent, base, shape)
+        self.shape = ti.expr_init(ti.Vector(tuple(self.shape.entries) + (n,)))
+        self.n = n
+
+    @ti.taichi_scope
+    def subscript(self, *indices):
+        indices = tuple(tovector(indices).entries)
+        return ti.Vector([self.parent.subscript(
+                self.linearize_indices(ti.Vector(indices + (i,))))
+                    for i in range(self.n)])
+
+
+@ti.data_oriented
 class MemoryField:
     is_taichi_class = True
 
@@ -307,11 +323,7 @@ class MObject:
         self.ids = parent.field(self.count)
 
         for i, (name, id) in enumerate(fields.items()):
-            self._set_field(i, id)
-
-    @ti.python_scope
-    def _set_field(self, i, id):
-        self.ids[i] = id
+            self.ids[i] = id
 
     @ti.python_scope
     def _do_prepare(self, argid):
