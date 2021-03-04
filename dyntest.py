@@ -67,8 +67,8 @@ class MemoryRoot:
         self.sizes = ti.field(int, count)
         self.bases = ti.field(int, count)
         self.shapes = ti.field(int, (count, 8))
-        self.args = ti.field(int, count)
-        self.idsi = ti.field(int, count)
+        self.args = ti.field(int, 8)
+        self.idsi = ti.field(int, 8)
 
     @ti.func
     def subscript(self, index):
@@ -325,40 +325,40 @@ g_mem = MemoryRoot(int, 2**16, 32)
 class MObject:
     @ti.python_scope
     def begdef(self, parent):
-        self.parent = parent
-        self.defs = []
+        self._parent = parent
+        self._defs = []
 
     @ti.python_scope
     def define(self, name, shape, n=None):
         if n is not None:
             shape = totuple(shape) + (n,)
-        id = self.parent.new(shape)
-        self.defs.append((name, id, n))
+        id = self._parent.new(shape)
+        self._defs.append((name, id, n))
 
     @ti.python_scope
     def enddef(self):
-        count = len(self.defs)
-        self.ids = self.parent.field(count)
-        for i, (name, id, n) in enumerate(self.defs):
-            self.set_field(i, id)
-            proxy = self.FieldViewProxy(self, name, id, n)
+        count = len(self._defs)
+        self._ids = self._parent.field(count)
+        for i, (name, id, n) in enumerate(self._defs):
+            self._set_field(i, id)
+            proxy = self._FieldProxy(self, name, id, n)
             setattr(self, name, proxy)
 
     @ti.data_oriented
-    class FieldViewProxy:
+    class _FieldProxy:
         @ti.python_scope
         def __init__(self, mobject, name, id, n):
             self._mobject = mobject
-            self.name = name
-            self.id = id
-            self.n = n
+            self._name = name
+            self._id = id
+            self._n = n
 
         @property
         def _core(self):
-            if self.n is not None:
-                return self._mobject.get_vector_field(self.id, self.n)
+            if self._n is not None:
+                return self._mobject._get_vector_field(self._id, self._n)
             else:
-                return self._mobject.get_field(self.id)
+                return self._mobject._get_field(self._id)
 
         def __getattr__(self, name):
             return getattr(self._core, name)
@@ -367,13 +367,13 @@ class MObject:
             self._core.subscript(*indices)
 
     @ti.python_scope
-    def set_field(self, i, id):
-        self.ids[i] = id
+    def _set_field(self, i, id):
+        self._ids[i] = id
 
     @ti.python_scope
     def _do_prepare(self, argid):
-        idsi = self.ids.id
-        self.parent.idsi[argid] = idsi
+        idsi = self._ids.id
+        self._parent.idsi[argid] = idsi
         self._argid = argid
 
     @ti.python_scope
@@ -381,24 +381,24 @@ class MObject:
         del self._argid
 
     @ti.func
-    def get_field_id(self, i):
-        idsi = self.parent.idsi[self._argid]
-        ids = self.parent.get_view(idsi)
+    def _get_field_id(self, i):
+        idsi = self._parent.idsi[self._argid]
+        ids = self._parent.get_view(idsi)
         return ids[i]
 
     @ti.func
-    def get_field(self, i):
-        return self.parent.get_view(self.get_field_id(i))
+    def _get_field(self, i):
+        return self._parent.get_view(self._get_field_id(i))
 
     @ti.func
-    def get_vector_field(self, i, n):
-        return self.parent.get_vector_view(self.get_field_id(i), n)
+    def _get_vector_field(self, i, n):
+        return self._parent.get_vector_view(self._get_field_id(i), n)
 
     def __hash__(self):
-        return id(type(self)) ^ hash(self.parent)
+        return id(type(self)) ^ hash(self._parent)
 
     def __eq__(self, other):
-        return type(self) is type(other) and self.parent is other.parent
+        return type(self) is type(other) and self._parent is other._parent
 
 
 def mokernel(foo):
