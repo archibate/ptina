@@ -68,7 +68,7 @@ class MemoryRoot:
         self.bases = ti.field(int, count)
         self.shapes = ti.field(int, (count, 8))
         self.args = ti.field(int, count)
-        self.idsi = ti.field(int, ())
+        self.idsi = ti.field(int, count)
 
     @ti.func
     def subscript(self, index):
@@ -297,7 +297,7 @@ g_mem = MemoryRoot(int, 2**16, 32)
 
 
 @ti.data_oriented
-class MemInstance:
+class MObject:
     @ti.python_scope
     def __init__(self, parent, count=32):
         self.parent = parent
@@ -308,13 +308,13 @@ class MemInstance:
         self.ids[i] = id
 
     @ti.python_scope
-    def prepare_self(self):
+    def _do_prepare(self):
         idsi = self.ids.id
-        self.parent.idsi[None] = idsi
+        self.parent.idsi[0] = idsi
 
     @ti.func
     def get_field(self, i):
-        idsi = self.parent.idsi[None]
+        idsi = self.parent.idsi[0]
         ids = self.parent.get_view(idsi)
         return self.parent.get_view(ids[i])
 
@@ -325,8 +325,28 @@ class MemInstance:
         return type(self) is type(other) and self.parent is other.parent
 
 
+def momethod(foo):
+    primal = foo._primal
+
+    def new_primal(self, *args, **kwargs):
+        self._do_prepare()
+        return primal(self, *args, **kwargs)
+
+    foo._primal = new_primal
+
+    adjoint = foo._adjoint
+
+    def new_adjoint(self, *args, **kwargs):
+        self._do_prepare()
+        return adjoint(self, *args, **kwargs)
+
+    foo._adjoint = new_adjoint
+
+    return foo
+
+
 @ti.data_oriented
-class MyObject(MemInstance):
+class Image(MObject):
     def __init__(self, m, n):
         super().__init__(g_mem)
 
@@ -336,18 +356,15 @@ class MyObject(MemInstance):
     def dat(self):
         return self.get_field(0)
 
-    def func(self):
-        self.prepare_self()
-        self._func()
-
+    @momethod
     @ti.kernel
-    def _func(self):
+    def func(self):
         ti.static_print('jit func')
         print(self.dat.shape.xy)
 
 
-a = MyObject(3, 4)
+a = Image(3, 4)
 a.func()
 print('===')
-b = MyObject(2, 2)
+b = Image(2, 2)
 b.func()
