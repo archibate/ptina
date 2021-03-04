@@ -324,15 +324,51 @@ g_mem = MemoryRoot(int, 2**16, 32)
 @ti.data_oriented
 class MObject:
     @ti.python_scope
-    def __init__(self, parent, fields):
+    def begdef(self, parent):
         self.parent = parent
-        self.fields = fields
+        self.defs = []
 
-        self.count = len(self.fields)
-        self.ids = parent.field(self.count)
+    @ti.python_scope
+    def define(self, name, shape, n=None):
+        if n is not None:
+            shape = totuple(shape) + (n,)
+        id = self.parent.new(shape)
+        self.defs.append((name, id, n))
 
-        for i, (name, id) in enumerate(fields.items()):
-            self.ids[i] = id
+    @ti.python_scope
+    def enddef(self):
+        count = len(self.defs)
+        self.ids = self.parent.field(count)
+        for i, (name, id, n) in enumerate(self.defs):
+            self.set_field(i, id)
+            proxy = self.FieldViewProxy(self, name, id, n)
+            setattr(self, name, proxy)
+
+    @ti.data_oriented
+    class FieldViewProxy:
+        @ti.python_scope
+        def __init__(self, mobject, name, id, n):
+            self._mobject = mobject
+            self.name = name
+            self.id = id
+            self.n = n
+
+        @property
+        def _core(self):
+            if self.n is not None:
+                return self._mobject.get_vector_field(self.id, self.n)
+            else:
+                return self._mobject.get_field(self.id)
+
+        def __getattr__(self, name):
+            return getattr(self._core, name)
+
+        def subscript(self, *indices):
+            self._core.subscript(*indices)
+
+    @ti.python_scope
+    def set_field(self, i, id):
+        self.ids[i] = id
 
     @ti.python_scope
     def _do_prepare(self, argid):
@@ -392,13 +428,9 @@ def mokernel(foo):
 
 class Image(MObject):
     def __init__(self, m, n):
-        super().__init__(g_mem, dict(
-                    img=g_mem.new((m, n, 3)),
-                    ))
-
-    @property
-    def img(self):
-        return self.get_vector_field(0, 3)
+        self.begdef(g_mem)
+        self.define('img', (m, n), 3)
+        self.enddef()
 
     @mokernel
     def func(self):
@@ -408,13 +440,9 @@ class Image(MObject):
 
 class Data(MObject):
     def __init__(self, m, n):
-        super().__init__(g_mem, dict(
-            dat=g_mem.new((m, n)),
-            ))
-
-    @property
-    def dat(self):
-        return self.get_field(0)
+        self.begdef(g_mem)
+        self.define('dat', (m, n))
+        self.enddef()
 
     @mokernel
     def func(self, other: ti.template()):
