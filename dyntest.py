@@ -332,10 +332,16 @@ class MObject:
 
 def momethod(foo):
     def wrap(func):
-        def wrapped(self, *args, **kwargs):
-            self._do_prepare(0)
-            ret = func(self, *args, **kwargs)
-            self._do_unprepare()
+        def wrapped(*args, **kwargs):
+            exitcbs = []
+            for i, obj in enumerate(args):
+                if isinstance(obj, MObject):
+                    obj._do_prepare(i)
+                    exitcbs.append(obj._do_unprepare)
+
+            ret = func(*args, **kwargs)
+
+            [cb() for cb in exitcbs]
             return ret
 
         return wrapped
@@ -384,5 +390,9 @@ class Data(MObject):
 
 
 i = Image(3, 4)
+j = Image(5, 6)
 d = Data(2, 3)
+e = Data(1, 2)
 d.func(i)
+d.func(j)
+e.func(j)
