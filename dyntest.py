@@ -324,19 +324,25 @@ g_mem = MemoryRoot(int, 2**16, 32)
 @ti.data_oriented
 class MObject:
     @ti.python_scope
-    def begdef(self, parent):
-        self._parent = parent
-        self._defs = []
+    def _prepare_defs(self):
+        if not hasattr(self, '_parent'):
+            self._parent = g_mem
+        if not hasattr(self, '_defs'):
+            self._defs = []
 
     @ti.python_scope
     def define(self, name, shape, n=None):
+        self._prepare_defs()
         if n is not None:
             shape = totuple(shape) + (n,)
         id = self._parent.new(shape)
         self._defs.append((name, id, n))
 
     @ti.python_scope
-    def enddef(self):
+    def _done_defs(self):
+        if hasattr(self, '_ids'):
+            return
+        self._prepare_defs()
         count = len(self._defs)
         self._ids = self._parent.field(count)
         for i, (name, id, n) in enumerate(self._defs):
@@ -372,6 +378,7 @@ class MObject:
 
     @ti.python_scope
     def _do_prepare(self, argid):
+        self._done_defs()
         idsi = self._ids.id
         self._parent.idsi[argid] = idsi
         self._argid = argid
@@ -395,9 +402,14 @@ class MObject:
         return self._parent.get_vector_view(self._get_field_id(i), n)
 
     def __hash__(self):
+        self._prepare_defs()
         return id(type(self)) ^ hash(self._parent)
 
     def __eq__(self, other):
+        if not isinstance(other, MObject):
+            return False
+        self._prepare_defs()
+        other._prepare_defs()
         return type(self) is type(other) and self._parent is other._parent
 
 
@@ -441,9 +453,7 @@ def mokernel(foo):
 
 class Image(MObject):
     def __init__(self, m, n):
-        self.begdef(g_mem)
         self.define('img', (m, n), 3)
-        self.enddef()
 
     @mokernel
     def func(self):
@@ -453,9 +463,7 @@ class Image(MObject):
 
 class Texture(Image):
     def __init__(self, m, n):
-        self.begdef(g_mem)
         self.define('img', (m, n), 2)
-        self.enddef()
 
     @mokernel
     def func(self):
@@ -465,9 +473,7 @@ class Texture(Image):
 
 class Data(MObject):
     def __init__(self, m, n):
-        self.begdef(g_mem)
         self.define('dat', (m, n))
-        self.enddef()
 
     @mokernel
     def func(self, other):
