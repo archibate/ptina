@@ -107,6 +107,15 @@ class MemoryRoot:
         view = MemoryView(self, base, shape)
         return view
 
+    @ti.func
+    def get_vector_view(self, id, n):
+        base = self.bases[id]
+        shape = ti.Vector([0] * 8)
+        for i in ti.static(range(8)):
+            shape[i] = self.shapes[id, i]
+        view = MemoryVectorView(self, base, shape, n)
+        return view
+
     @ti.python_scope
     def field(self, shape):
         shape = totuple(shape)
@@ -215,11 +224,11 @@ class MemoryView:
 
 
 @ti.data_oriented
-class MemoryVectorView:
+class MemoryVectorView(MemoryView):
     @ti.taichi_scope
     def __init__(self, parent, base, shape, n):
         super().__init__(parent, base, shape)
-        self.shape = ti.expr_init(ti.Vector(tuple(self.shape.entries) + (n,)))
+        self.shape = ti.expr_init(ti.Vector(tuple(self.shape.entries[:-1]) + (n,)))
         self.n = n
 
     @ti.taichi_scope
@@ -336,10 +345,18 @@ class MObject:
         del self._argid
 
     @ti.func
-    def get_field(self, i):
+    def get_field_id(self, i):
         idsi = self.parent.idsi[self._argid]
         ids = self.parent.get_view(idsi)
-        return self.parent.get_view(ids[i])
+        return ids[i]
+
+    @ti.func
+    def get_field(self, i):
+        return self.parent.get_view(self.get_field_id(i))
+
+    @ti.func
+    def get_vector_field(self, i, n):
+        return self.parent.get_vector_view(self.get_field_id(i), n)
 
     def __hash__(self):
         return id(type(self)) ^ hash(self.parent)
@@ -376,17 +393,17 @@ def mokernel(foo):
 class Image(MObject):
     def __init__(self, m, n):
         super().__init__(g_mem, dict(
-                    dat=g_mem.new((m, n)),
+                    img=g_mem.new((m, n, 3)),
                     ))
 
     @property
     def img(self):
-        return self.get_field(0)
+        return self.get_vector_field(0, 3)
 
     @mokernel
     def func(self):
-        ti.static_print('jit func')
-        print(self.img.shape.xy)
+        ti.static_print('jit Image.func')
+        print('!!', self.img.shape.xy, self.img.n)
 
 
 class Data(MObject):
@@ -401,7 +418,7 @@ class Data(MObject):
 
     @mokernel
     def func(self, other: ti.template()):
-        ti.static_print('jit func')
+        ti.static_print('jit Data.func')
         print(self.dat.shape.xy)
         print(other.img.shape.xy)
         print('====')
@@ -414,3 +431,5 @@ e = Data(1, 2)
 d.func(i)
 d.func(j)
 e.func(j)
+i.func()
+j.func()
