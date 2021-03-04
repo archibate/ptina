@@ -401,6 +401,17 @@ class MObject:
         return type(self) is type(other) and self._parent is other._parent
 
 
+def _fix_missing_tmpl_anno(func):
+    import inspect
+
+    sig = inspect.signature(func)
+    for i, (name, param) in enumerate(sig.parameters.items()):
+        if i == 0:
+            continue
+        if param.annotation is inspect.Parameter.empty:
+            func.__annotations__[name] = ti.template()
+
+
 def mokernel(foo):
     def mowrap(func):
         def wrapped(*args, **kwargs):
@@ -416,6 +427,8 @@ def mokernel(foo):
             return ret
 
         return wrapped
+
+    _fix_missing_tmpl_anno(foo)
 
     from taichi.lang.kernel import _kernel_impl
     foo = _kernel_impl(foo, level_of_class_stackframe=3)
@@ -445,7 +458,7 @@ class Data(MObject):
         self.enddef()
 
     @mokernel
-    def func(self, other: ti.template()):
+    def func(self, other):
         ti.static_print('jit Data.func')
         print(self.dat.shape.xy)
         print(other.img.shape.xy)
