@@ -329,27 +329,30 @@ class MObject:
     def __eq__(self, other):
         return type(self) is type(other) and self.parent is other.parent
 
+    @staticmethod
+    def kernel(foo):
+        def wrap(func):
+            def wrapped(*args, **kwargs):
+                exitcbs = []
+                for i, obj in enumerate(args):
+                    if isinstance(obj, MObject):
+                        obj._do_prepare(i)
+                        exitcbs.append(obj._do_unprepare)
 
-def momethod(foo):
-    def wrap(func):
-        def wrapped(*args, **kwargs):
-            exitcbs = []
-            for i, obj in enumerate(args):
-                if isinstance(obj, MObject):
-                    obj._do_prepare(i)
-                    exitcbs.append(obj._do_unprepare)
+                ret = func(*args, **kwargs)
 
-            ret = func(*args, **kwargs)
+                [cb() for cb in exitcbs]
+                return ret
 
-            [cb() for cb in exitcbs]
-            return ret
+            return wrapped
 
-        return wrapped
+        from taichi.lang.kernel import _kernel_impl
+        foo = _kernel_impl(foo, level_of_class_stackframe=3)
 
-    foo._primal = wrap(foo._primal)
-    foo._adjoint = wrap(foo._adjoint)
+        foo._primal = wrap(foo._primal)
+        foo._adjoint = wrap(foo._adjoint)
 
-    return foo
+        return foo
 
 
 @ti.data_oriented
@@ -363,8 +366,7 @@ class Image(MObject):
     def img(self):
         return self.get_field(0)
 
-    @momethod
-    @ti.kernel
+    @MObject.kernel
     def func(self):
         ti.static_print('jit func')
         print(self.img.shape.xy)
@@ -381,12 +383,12 @@ class Data(MObject):
     def dat(self):
         return self.get_field(0)
 
-    @momethod
-    @ti.kernel
+    @MObject.kernel
     def func(self, other: ti.template()):
         ti.static_print('jit func')
         print(self.dat.shape.xy)
         print(other.img.shape.xy)
+        print('====')
 
 
 i = Image(3, 4)
