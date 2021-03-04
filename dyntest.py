@@ -299,12 +299,18 @@ g_mem = MemoryRoot(int, 2**16, 32)
 @ti.data_oriented
 class MObject:
     @ti.python_scope
-    def __init__(self, parent, count=32):
+    def __init__(self, parent, fields):
         self.parent = parent
-        self.ids = parent.field(count)
+        self.fields = fields
+
+        self.count = len(self.fields)
+        self.ids = parent.field(self.count)
+
+        for i, (name, id) in enumerate(fields.items()):
+            self._set_field(i, id)
 
     @ti.python_scope
-    def set_field(self, i, id):
+    def _set_field(self, i, id):
         self.ids[i] = id
 
     @ti.python_scope
@@ -329,61 +335,59 @@ class MObject:
     def __eq__(self, other):
         return type(self) is type(other) and self.parent is other.parent
 
-    @staticmethod
-    def kernel(foo):
-        def wrap(func):
-            def wrapped(*args, **kwargs):
-                exitcbs = []
-                for i, obj in enumerate(args):
-                    if isinstance(obj, MObject):
-                        obj._do_prepare(i)
-                        exitcbs.append(obj._do_unprepare)
 
-                ret = func(*args, **kwargs)
+def mokernel(foo):
+    def mowrap(func):
+        def wrapped(*args, **kwargs):
+            exitcbs = []
+            for i, obj in enumerate(args):
+                if isinstance(obj, MObject):
+                    obj._do_prepare(i)
+                    exitcbs.append(obj._do_unprepare)
 
-                [cb() for cb in exitcbs]
-                return ret
+            ret = func(*args, **kwargs)
 
-            return wrapped
+            [cb() for cb in exitcbs]
+            return ret
 
-        from taichi.lang.kernel import _kernel_impl
-        foo = _kernel_impl(foo, level_of_class_stackframe=3)
+        return wrapped
 
-        foo._primal = wrap(foo._primal)
-        foo._adjoint = wrap(foo._adjoint)
+    from taichi.lang.kernel import _kernel_impl
+    foo = _kernel_impl(foo, level_of_class_stackframe=3)
 
-        return foo
+    foo._primal = mowrap(foo._primal)
+    foo._adjoint = mowrap(foo._adjoint)
+
+    return foo
 
 
-@ti.data_oriented
 class Image(MObject):
     def __init__(self, m, n):
-        super().__init__(g_mem)
-
-        self.set_field(0, self.parent.new((m, n)))
+        super().__init__(g_mem, dict(
+                    dat=g_mem.new((m, n)),
+                    ))
 
     @property
     def img(self):
         return self.get_field(0)
 
-    @MObject.kernel
+    @mokernel
     def func(self):
         ti.static_print('jit func')
         print(self.img.shape.xy)
 
 
-@ti.data_oriented
 class Data(MObject):
     def __init__(self, m, n):
-        super().__init__(g_mem)
-
-        self.set_field(0, self.parent.new((m, n)))
+        super().__init__(g_mem, dict(
+            dat=g_mem.new((m, n)),
+            ))
 
     @property
     def dat(self):
         return self.get_field(0)
 
-    @MObject.kernel
+    @mokernel
     def func(self, other: ti.template()):
         ti.static_print('jit func')
         print(self.dat.shape.xy)
