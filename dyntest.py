@@ -451,6 +451,18 @@ class Image(MObject):
         print('!!', self.img.shape.xy, self.img.n)
 
 
+class Texture(Image):
+    def __init__(self, m, n):
+        self.begdef(g_mem)
+        self.define('img', (m, n), 2)
+        self.enddef()
+
+    @mokernel
+    def func(self):
+        ti.static_print('jit Texture.func')
+        print('!!', self.img.shape.xy, self.img.n)
+
+
 class Data(MObject):
     def __init__(self, m, n):
         self.begdef(g_mem)
@@ -467,10 +479,13 @@ class Data(MObject):
 
 i = Image(3, 4)
 j = Image(5, 6)
+k = Texture(7, 8)
 d = Data(2, 3)
 e = Data(1, 2)
 d.func(i)
 d.func(j)
 e.func(j)
+d.func(k)
 i.func()
 j.func()
+k.func()
