@@ -14,7 +14,7 @@ vertices = readobj('assets/monkey.obj')
 ModelPool().load(vertices)
 BVHTree().build()
 
-gui = ti.GUI((1024, 1024))
+gui = ti.GUI('objloader', (1024, 1024))
 gui.control = CamControl(gui)
 while gui.running:
     if gui.control.process_events():

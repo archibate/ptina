@@ -52,8 +52,8 @@ The unit of numbers below is samples-per-second, the larger the better:
 
 ## References
 
-https://github.com/wdas/brdf/blob/main/src/brdfs/disney.brdf
-http://www.pbr-book.org/3ed-2018/Reflection_Models/Microfacet_Models.html#eq:beckmann-lambda
-https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/
-https://developer.nvidia.com/blog/thinking-parallel-part-ii-tree-traversal-gpu/
-https://web.maths.unsw.edu.au/~fkuo/sobol/
+- https://github.com/wdas/brdf/blob/main/src/brdfs/disney.brdf
+- http://www.pbr-book.org/3ed-2018/Reflection_Models/Microfacet_Models.html#eq:beckmann-lambda
+- https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/
+- https://developer.nvidia.com/blog/thinking-parallel-part-ii-tree-traversal-gpu/
+- https://web.maths.unsw.edu.au/~fkuo/sobol/

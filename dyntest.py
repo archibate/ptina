@@ -60,12 +60,15 @@ class IdAllocator:
 class MemoryRoot:
     def __init__(self, dtype, size, count):
         self.size = size
+        self.count = count
         self.root = ti.field(dtype, size)
         self.mman = MemoryAllocator(size)
         self.idman = IdAllocator(count)
         self.sizes = ti.field(int, count)
         self.bases = ti.field(int, count)
         self.shapes = ti.field(int, (count, 8))
+        self.args = ti.field(int, 8)
+        self.idsi = ti.field(int, 8)
 
     @ti.func
     def subscript(self, index):
@@ -73,6 +76,7 @@ class MemoryRoot:
 
     @ti.python_scope
     def new(self, shape):
+        shape = totuple(shape)
         size = Vprod(shape)
         base = self.mman.malloc(size)
         id = self.idman.malloc()
@@ -101,6 +105,15 @@ class MemoryRoot:
         for i in ti.static(range(8)):
             shape[i] = self.shapes[id, i]
         view = MemoryView(self, base, shape)
+        return view
+
+    @ti.func
+    def get_vector_view(self, id, n):
+        base = self.bases[id]
+        shape = ti.Vector([0] * 8)
+        for i in ti.static(range(8)):
+            shape[i] = self.shapes[id, i]
+        view = MemoryVectorView(self, base, shape, n)
         return view
 
     @ti.python_scope
@@ -211,6 +224,22 @@ class MemoryView:
 
 
 @ti.data_oriented
+class MemoryVectorView(MemoryView):
+    @ti.taichi_scope
+    def __init__(self, parent, base, shape, n):
+        super().__init__(parent, base, shape)
+        self.shape = ti.expr_init(ti.Vector(tuple(self.shape.entries[:-1]) + (n,)))
+        self.n = n
+
+    @ti.taichi_scope
+    def subscript(self, *indices):
+        indices = tuple(tovector(indices).entries)
+        return ti.Vector([self.parent.subscript(
+                self.linearize_indices(ti.Vector(indices + (i,))))
+                    for i in range(self.n)])
+
+
+@ti.data_oriented
 class MemoryField:
     is_taichi_class = True
 
@@ -239,6 +268,40 @@ class MemoryField:
     def variable(self):
         return self
 
+    @classmethod
+    @ti.kernel
+    def _setitem_i(cls: ti.template(), parent: ti.template(), id: int,
+            value: int, nindices: ti.template()):
+        indices = ti.Vector([0] * nindices)
+        for i in ti.static(range(nindices)):
+            indices[i] = parent.args[i]
+        view = parent.get_view(id)
+        view[indices] = value
+
+    @classmethod
+    @ti.kernel
+    def _getitem_i(cls: ti.template(), parent: ti.template(), id: int,
+            nindices: ti.template()) -> int:
+        indices = ti.Vector([0] * nindices)
+        for i in ti.static(range(nindices)):
+            indices[i] = parent.args[i]
+        view = parent.get_view(id)
+        return view[indices]
+
+    @ti.python_scope
+    def __setitem__(self, indices, value):
+        indices = totuple(indices)
+        for i, v in enumerate(indices):
+            self.parent.args[i] = v
+        self._setitem_i(self.parent, self.id, value, len(indices))
+
+    @ti.python_scope
+    def __getitem__(self, indices):
+        indices = totuple(indices)
+        for i, v in enumerate(indices):
+            self.parent.args[i] = v
+        return self._getitem_i(self.parent, self.id, len(indices))
+
 
 @ti.data_oriented
 class MemoryVectorField(MemoryField):
@@ -255,106 +318,180 @@ class MemoryVectorField(MemoryField):
         return ti.Vector([self.view.subscript(*indices + (i,)) for i in range(self.n)])
 
 
-mem = MemoryRoot(int, 2**16, 32)
+g_mem = MemoryRoot(int, 2**16, 32)
 
 
 @ti.data_oriented
-class ObjectPool:
-    def __init__(self, nobjects=2**8, nattribs=2**6):
-        self.data = ti.field(int, (nobjects, nattribs))
-        self.idman = IdAllocator(nobjects)
+class MObject:
+    @ti.python_scope
+    def _prepare_defs(self):
+        if not hasattr(self, '_parent'):
+            self._parent = g_mem
+        if not hasattr(self, '_defs'):
+            self._defs = []
 
-    @ti.func
-    def get_view(self, objid, attrid):
-        id = self.data[objid, attrid]
-        return mem.get_view(id)
+    @ti.python_scope
+    def define(self, name, shape, n=None):
+        self._prepare_defs()
+        if n is not None:
+            shape = totuple(shape) + (n,)
+        id = self._parent.new(shape)
+        self._defs.append((name, id, n))
 
-    def new_proxy(self, clsid):
-        objid = self.idman.malloc()
-        return self.ObjectProxy(self, clsid, objid)
+    @ti.python_scope
+    def _done_defs(self):
+        if hasattr(self, '_ids'):
+            return
+        self._prepare_defs()
+        count = len(self._defs)
+        self._ids = self._parent.field(count)
+        for i, (name, id, n) in enumerate(self._defs):
+            self._set_field(i, id)
+            proxy = self._FieldProxy(self, name, id, n)
+            setattr(self, name, proxy)
 
     @ti.data_oriented
-    class ObjectProxy:
-        def __init__(self, parent, clsid, objid):
-            self.parent = parent
-            self.objid = objid
-            self.clsid = clsid
-            self.nattrs = 0
-            self.shapes = []
+    class _FieldProxy:
+        @ti.python_scope
+        def __init__(self, mobject, name, id, n):
+            self._mobject = mobject
+            self._name = name
+            self._id = id
+            self._n = n
 
-        def new(self, shape):
-            fid = mem.new(shape)
-            attrid = self.nattrs
-            self.parent.data[self.objid, attrid] = fid
-            self.nattrs += 1
-            self.shapes.append(shape)
-            return self.FieldProxy(self, attrid)
+        @property
+        def _core(self):
+            if self._n is not None:
+                return self._mobject._get_vector_field(self._id, self._n)
+            else:
+                return self._mobject._get_field(self._id)
 
-        def on_hash(self):
-            return self.clsid
+        def __getattr__(self, name):
+            return getattr(self._core, name)
 
-        def on_eq(self, other):
-            return self.clsid == other._proxy.clsid
+        def subscript(self, *indices):
+            self._core.subscript(*indices)
 
-        @ti.data_oriented
-        class FieldProxy:
-            is_taichi_class = True
+    @ti.python_scope
+    def _set_field(self, i, id):
+        self._ids[i] = id
 
-            def __init__(self, parent, attrid):
-                self.parent = parent
-                self.attrid = attrid
+    @ti.python_scope
+    def _do_prepare(self, argid):
+        self._done_defs()
+        idsi = self._ids.id
+        self._parent.idsi[argid] = idsi
+        self._argid = argid
 
-            @property
-            @ti.func
-            def field_id(self):
-                return self.parent.parent.data[self.parent.objid, self.attrid]
+    @ti.python_scope
+    def _do_unprepare(self):
+        del self._argid
 
-            @property
-            @ti.func
-            def view(self):
-                return mem.get_view(self.field_id)
+    @ti.func
+    def _get_field_id(self, i):
+        idsi = self._parent.idsi[self._argid]
+        ids = self._parent.get_view(idsi)
+        return ids[i]
 
-            @property
-            @ti.taichi_scope
-            def shape(self):
-                return self.view.shape
+    @ti.func
+    def _get_field(self, i):
+        return self._parent.get_view(self._get_field_id(i))
 
-            @ti.taichi_scope
-            def subscript(self, *indices):
-                return self.view.subscript(*indices)
-
-            @ti.taichi_scope
-            def variable(self):
-                return self
-
-
-pool = ObjectPool()
-
-
-@ti.data_oriented
-class MyClass:
-    def __init__(self, m, n):
-        self._proxy = pool.new_proxy(1)
-        self.dat = self._proxy.new((m, n))
+    @ti.func
+    def _get_vector_field(self, i, n):
+        return self._parent.get_vector_view(self._get_field_id(i), n)
 
     def __hash__(self):
-        return self._proxy.on_hash()
+        self._prepare_defs()
+        return id(type(self)) ^ hash(self._parent)
 
     def __eq__(self, other):
-        return self._proxy.on_eq(other)
+        if not isinstance(other, MObject):
+            return False
+        self._prepare_defs()
+        other._prepare_defs()
+        return type(self) is type(other) and self._parent is other._parent
 
-    @ti.kernel
+
+def _fix_missing_tmpl_anno(func):
+    import inspect
+
+    sig = inspect.signature(func)
+    for i, (name, param) in enumerate(sig.parameters.items()):
+        if i == 0:
+            continue
+        if param.annotation is inspect.Parameter.empty:
+            func.__annotations__[name] = ti.template()
+
+
+def mokernel(foo):
+    def mowrap(func):
+        def wrapped(*args, **kwargs):
+            exitcbs = []
+            for i, obj in enumerate(args):
+                if isinstance(obj, MObject):
+                    obj._do_prepare(i)
+                    exitcbs.append(obj._do_unprepare)
+
+            ret = func(*args, **kwargs)
+
+            [cb() for cb in exitcbs]
+            return ret
+
+        return wrapped
+
+    _fix_missing_tmpl_anno(foo)
+
+    from taichi.lang.kernel import _kernel_impl
+    foo = _kernel_impl(foo, level_of_class_stackframe=3)
+
+    foo._primal = mowrap(foo._primal)
+    foo._adjoint = mowrap(foo._adjoint)
+
+    return foo
+
+
+class Image(MObject):
+    def __init__(self, m, n):
+        self.define('img', (m, n), 3)
+
+    @mokernel
     def func(self):
-        ti.static_print('jit func')
-        print(self.dat.field_id)
-        for i, j in ti.ndrange(*self.dat.shape.xy):
-            self.dat[i, j] = i * 10 + j
-        for i, j in ti.ndrange(*self.dat.shape.xy):
-            print(i, j, self.dat[i, j])
+        ti.static_print('jit Image.func')
+        print('!!', self.img.shape.xy, self.img.n)
 
 
-a = MyClass(3, 4)
-a.func()
-print('===')
-b = MyClass(3, 4)
-b.func()
+class Texture(Image):
+    def __init__(self, m, n):
+        self.define('img', (m, n), 2)
+
+    @mokernel
+    def func(self):
+        ti.static_print('jit Texture.func')
+        print('!!', self.img.shape.xy, self.img.n)
+
+
+class Data(MObject):
+    def __init__(self, m, n):
+        self.define('dat', (m, n))
+
+    @mokernel
+    def func(self, other):
+        ti.static_print('jit Data.func')
+        print(self.dat.shape.xy)
+        print(other.img.shape.xy)
+        print('====')
+
+
+i = Image(3, 4)
+j = Image(5, 6)
+k = Texture(7, 8)
+d = Data(2, 3)
+e = Data(1, 2)
+d.func(i)
+d.func(j)
+e.func(j)
+d.func(k)
+i.func()
+j.func()
+k.func()

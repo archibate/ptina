@@ -6,6 +6,9 @@ import taichi as ti
 import numpy as np
 
 
+ti.TaichiOperations = ti.lang.common_ops.TaichiOperations
+
+
 hasattr(ti, '_tinahacked') or setattr(ti, '_tinahacked', 1) or setattr(ti,
         'static', lambda x, *xs: [x] + list(xs) if xs else x) or setattr(
         ti.Matrix, 'element_wise_writeback_binary', (lambda f: lambda x, y, z:
